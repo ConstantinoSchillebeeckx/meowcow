@@ -21,23 +21,19 @@ function populateNVD3Chart(dat, sel, guiVals, title) {
     // nvd3 expects SVG to exist already
     d3.select(sel).append('svg');
 
-    var chart;
-
     if (guiVals.plotType.value == 'scatter') {
         var tmp = prepDataForScatter(dat, guiVals);
 
         // create the chart
         nv.addGraph(function() {
-            chart = nv.models.scatterChart()
-                //.showDistX(false)
-                //.showDistY(false)
+            var chart = nv.models.scatterChart()
                 .useVoronoi(true)
                 .color(d3.scale.category10().range())
-                .duration(300);
+                .duration(300)
+                .showLegend(tmp.length > 1)
 
             formatAxisTitle(chart, guiVals);
             formatTooltip(chart, guiVals);
-
 
             d3.select(sel + ' svg')
                 .datum(tmp)
@@ -52,7 +48,7 @@ function populateNVD3Chart(dat, sel, guiVals, title) {
 
         // create chart
         nv.addGraph(function() {
-            chart = nv.models.discreteBarChart()
+            var chart = nv.models.discreteBarChart()
                 .x(function(d) { return d.label })
                 .y(function(d) { return d[guiVals.aggMethod.value] })
                 .staggerLabels(false)
@@ -74,7 +70,7 @@ function populateNVD3Chart(dat, sel, guiVals, title) {
 
             // create chart
             nv.addGraph(function() {
-                chart = nv.models.lineChart()
+                var chart = nv.models.lineChart()
                     .options({
                         duration: 300,
                         useInteractiveGuideline: true

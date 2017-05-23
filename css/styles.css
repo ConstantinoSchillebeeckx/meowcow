@@ -19,3 +19,7 @@ html {
     overflow-y: scroll; /* forces vertical scrollbar which is needed for proper width calculations such as for facets */
 }
 
+text.nv-axislabel {
+    font-weight: bold;
+}
+
