@@ -1,0 +1,9 @@
+[submodule "distroplot"]
+	path = distroplot
+	url = git@github.com:ConstantinoSchillebeeckx/distroplot.git
+[submodule "c3"]
+	path = c3
+	url = https://github.com/c3js/c3.git
+[submodule "nvd3"]
+	path = nvd3
+	url = https://github.com/novus/nvd3.git

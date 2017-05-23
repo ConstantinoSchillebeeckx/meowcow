@@ -1,0 +1,21 @@
+.error-bars {
+    stroke-width: 1;
+}
+
+#gui {
+    margin-top:10px;
+}
+
+.facet {
+    float: left;
+    
+}
+
+.facet:nth-child(odd) {
+    background-color: #EFF3F3;
+}
+
+html {
+    overflow-y: scroll; /* forces vertical scrollbar which is needed for proper width calculations such as for facets */
+}
+
