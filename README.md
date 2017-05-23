@@ -48,3 +48,11 @@ var colTypes = {
 ```
 
 Note that in the above example, our data comes with a primary key column `ID` which we want to ignore - specify this attribute as an `"excluded"` data type.
+
+## Usage
+
+An example [index.html] has been generated to show usage. The DOM requires 3 divs be present:
+
+1. <div id="gui"></div> <!-- GUI container -->
+2. <div id="warning"></div> <!-- warnings/errors container -->
+3. <div id="canvas"></div> <!-- plot container -->
