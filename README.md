@@ -16,7 +16,7 @@ Input data is composed of two pieces:
 
 The tabular data that you are trying to visualize. It should be stored as an array of arrays where each inner array represents a row of your data. It is assumed that your data is organized in a tall fashion where each column defines an attribute of the data; each of these attributes will serve as dimnesion that can be visualized by specifying the proper option in the GUI. 
 
-An example dataset is provided and loaded by [tall.js](blob/master/js/tall.js#L18); in table form, the first two rows are formatted as
+An example dataset is provided and loaded by [tall.js](js/tall.js#L18); in table form, the first two rows are formatted as
 
 ID | Subject | Value | Date | Study | Treatment | StudyType | Day
 --- | --- | --- | --- | --- | --- | --- | ---
@@ -47,4 +47,4 @@ var colTypes = {
 }
 ```
 
-Note that in the above example, our data comes with a primary key column `ID` which we want to ignore - specify this attribute as an `"excluded"` data type.
+Note that in the above example, our data comes with a surrogate key column `ID` which we want to ignore - specify this attribute as an `"excluded"` data type.
