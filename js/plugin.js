@@ -21,14 +21,16 @@ function loadPlotData() {
     // convert globals into proper format for viz
     // cols - obj of column types
     // dat - list of lists with inner list as data table row
-    var cols = {}
+    var colTypes = {}
     for (var field in db) {
-        cols[field] = db[field].type.split('(')[0];
+        if (!db[field].hidden) colTypes[field] = db[field].type.split('(')[0];
     }
 
+    // local storage
+    localStorage.setItem("responseDat", JSON.stringify(responseDat));
+    localStorage.setItem("colTypes", JSON.stringify(colTypes));
    
     // open new tab and preLoad data after load
     var tab = window.open('/chickenkitchen/meowcow/plot.html') ;
-    tab.onload = function(){ tab.preLoad(responseDat, cols); };
 
 }

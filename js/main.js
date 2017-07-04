@@ -8,12 +8,14 @@
  *
  */
 
-function preLoad(inpuDat, colTypes) {
+function preLoad(inputDat, colTypes) {
 
     if (typeof inputDat === 'undefined') {
         jQuery('body').append('<h2>You must declare a global name <code>dat</code>, organized as a list of lists where each inner list is a row of the datatable.</h2>');
+        return;
     } else if (typeof colTypes === 'undefined') {
         jQuery('body').append('<h2>You must declare a global object named <code>cols</code> with data fields as keys and SQL field types as values.</h2>');
+        return;
     }
 
     // GLOBAL!
@@ -270,7 +272,7 @@ function setupFacetGrid(sel, guiVals, dat, unique) {
  * @ return {obj} Each key is a column and each value is an array of unique values that column has.
  */
 
-function getAllUnique(dat, colTupes) {
+function getAllUnique(dat, colTypes) {
 
     var keys = Object.keys(dat[0]); // list of columns for datatable
     var vals = {};
