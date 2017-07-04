@@ -53,7 +53,6 @@ Note that in the above example, our data comes with a surrogate key column `ID` 
 
 An example [index.html] has been generated to show usage. The DOM requires 3 divs be present:
 
-1. <div id="gui"></div> <!-- GUI container -->
-2. <div id="warning"></div> <!-- warnings/errors container -->
-3. <div id="canvas"></div> <!-- plot container -->
-=======
+1. ```<div id="gui"></div> <!-- GUI container -->```
+2. ```<div id="warning"></div> <!-- warnings/errors container -->```
+3. ```<div id="canvas"></div> <!-- plot container -->```
