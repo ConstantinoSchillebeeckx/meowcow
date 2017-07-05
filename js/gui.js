@@ -5,13 +5,13 @@ function gui() {
     // Public Variables with Default Settings
     //------------------------------------------------------------
     var options = false,
-        container = false
+        container = false,
+        renderCallback = false, // to be called by "Render button"
+        onComplete = false // to be called after GUI is setup
 
     this.init = function() {
-
         buildSkeleton(this.container)
         populateGUI(this.options);
-
     }
 
 
@@ -24,7 +24,8 @@ function gui() {
     var plotTypesID = '#plotTypes',
         guiRowPlotBasics = '#plotSetup',
         guiRowPlotFacets = '#plotFacets',
-        guiRowPlotOptions = '#plotOptions'
+        guiRowPlotOptions = '#plotOptions',
+        guiRowPlotFilters = '#plotFilter'
 
 
     /**
@@ -48,18 +49,53 @@ function gui() {
     /**
      * Return an array of columns (defined as keys in options.colMap)
      * that match the given column type as defined by the datatypes
-     * in options.colMap
+     * in options.colMap or the available data columns as an object
+     * if no type is passed
      *
-     * @param {str} type - type of columns requested, either interval
+     * @param {str} type - [optional] type of columns requested, either interval
      *   (int, float) or ordinal (str, datetime)
      *
-     * @return {array} - column names that match column type
+     * @return {array/obj} 
+     *  - column names that match column type
+     *  - obj of available data columns if no type provided
      */
     var getCols = function(type) { // return colMap keys that match the given type [interval/ordinal]
         var colMap = options.colMap;
-        var filter = type == 'interval' ? ['int','float'] : ['datetime','str'];
-        return Object.keys(colMap).filter(function(e) { return filter.indexOf(colMap[e]) != -1  })
+        if (typeof type !== 'undefined') {
+            var filter = type == 'interval' ? ['int','float'] : ['datetime','str'];
+            return Object.keys(colMap).filter(function(e) { return filter.indexOf(colMap[e].type) != -1  })
+        } else { // remove 'excluded' column types from colMap
+            var tmp = {};
+            for (var key in colMap) {
+                if (colMap[key].type !== 'excluded') tmp[key] = colMap[key];
+            }
+            return tmp;
+        }
     };
+
+    var getColType = function(col) {
+        return options.colMap[col].type
+    }
+
+    var getAxisSetup = function(axis) {
+        return getPlotSettings().setup[axis];
+    }
+
+    var getAvailableAxes = function() {
+        return Object.keys(getPlotSettings().setup);
+    }
+
+    var getPlotSettings = function() {
+        return options.plotTypes[getPlotType()];
+    }
+
+    var getAllowFacets = function() {
+        return getPlotSettings().allowFacets;
+    }
+
+    var getPlotOptions = function() {
+        return getPlotSettings().options;
+    }
 
 
     /**
@@ -74,31 +110,59 @@ function gui() {
         return getCols(axisType);
     }
 
-    function plotTypeChange(selector) {
+    /**
+     * Function that's called each time the plotType changes;
+     * it will update all the form inputs to their proper  
+     * values including plot basics, plot facets, plot options
+     * and plot filters
+     */
+    function plotTypeChange() {
         setupPlotBasics();
         setupPlotFacets();
         setupPlotOptions();
+        setupPlotFilters();
     }
+
 
     /**
      * called on each plot type change, shows the proper x,y,z,
      * select options that will define the plots axes
      */
     function setupPlotBasics() {
-        var plotType = getPlotType();
-        var axisSetup = options.plotTypes[plotType].setup;
 
         var axes = ['x','y','z'];
+        var availableAxes = getAvailableAxes()
+
         axes.forEach(function(d) {
-            if (d in axisSetup) {
-                var cols = getCols(plotType, d);
-                var label = "name" in axisSetup[d] ? axisSetup[d].name : d.toUpperCase()+"-axis";
+            if (availableAxes.indexOf(d) !== -1) {
+                var cols = getCols(getPlotType(), d);
+                var label = "name" in getAxisSetup(d) ? getAxisSetup(d).name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
                 generateFormSelect(cols, guiRowPlotBasics, d +"-axis", label, false, domClass);
             }
         });
     }
 
+    /**
+     * called on each plot type change, shows the proper inputs
+     * for the requested plot type based on the defined plot
+     * options and whether allowFacets = true, if false
+     * the row will be hidden
+     */
+    function setupPlotFacets() {
+
+        if (getAllowFacets()) {
+            d3.select(guiRowPlotFacets).style('display',null);
+            var dir = ['horizontal','vertical'];
+
+            dir.forEach(function(d) {
+                var cols = getCols('ordinal');
+                generateFormSelect(cols, guiRowPlotFacets, d+'-facet', d);
+            });
+        } else {
+            d3.select(guiRowPlotFacets).style('display','hidden');
+        }
+    }
 
     /**
      * called on each plot type change, shows the proper inputs
@@ -106,14 +170,18 @@ function gui() {
      * options.
      */
     function setupPlotOptions() {
-        var plotOptions = options.plotTypes[getPlotType()].options;
+        var plotOptions = getPlotOptions();
         if (plotOptions) {
 
             d3.select(guiRowPlotOptions).style('display',null);
 
             plotOptions.forEach(function(d) {
                 if (d.type == 'select') {
-                    generateFormSelect(d.values, guiRowPlotOptions, d.name, d.label ? d.label : d.name);
+                    generateFormSelect(d.values, guiRowPlotOptions, d.name, d.label, d.allowEmpty, d.domClass);
+                } else if (d.type == 'toggle') {
+                    generateFormToggle(guiRowPlotOptions, d.name, d.label, d.domClass, d.options);
+                } else if (d.type == 'slider') {
+                    generateFormSlider(guiRowPlotOptions, d.name, d.label, d.domClass, d.options, d.format);
                 }
             })
 
@@ -124,23 +192,40 @@ function gui() {
 
 
     /**
-     * called on each plot type change, shows the proper inputs
-     * for the requested plot type based on the defined plot
-     * options and whether allowFacets = true, if false
-     * the row will be hidden
+     *
      */
-    function setupPlotFacets() {
+    function setupPlotFilters() {
 
-        if (options.plotTypes[getPlotType()].allowFacets) {
-            d3.select(guiRowPlotFacets).style('display',null);
-            var dir = ['horizontal','vertical'];
+        if (typeof unique !== 'undefined') { // unique is a global set with preLoad()
+            d3.select(guiRowPlotFilters).style('display',null);
+            var colMap = getCols();
 
-            dir.forEach(function(d) {
-                var cols = getCols('ordinal');
-                generateFormSelect(cols, guiRowPlotFacets, d+'-facet', d);
-            });
-        } else {
-            d3.select(guiRowPlotFacets).style('display','hidden');
+            for (var col in colMap) {
+                var colType = getColType(col);
+                var colVals = unique[col];
+                if (colType == 'int' || colType == 'float') {
+                    colVals = d3.extent(unique[col]);
+                    var sliderOptions = {
+                        start: [colVals[0], colVals[1]],
+                        connect: true,
+                        range: {
+                            min: colVals[0],
+                            max: colVals[1],
+                        }
+                    };
+
+                    var format;
+                    if (colType == 'int') {
+                        format = colMap[col].format ? colMap[col].format : function(d) { return '[' + parseInt(d[0]) + ',' + parseInt(d[1]) + ']' };
+                    } else if (colType == 'float') {
+                        format = colMap[col].format ? colMap[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + paraseFloat(d[1]).toFixed(2) + ']'; };
+                    }
+                    generateFormSlider(guiRowPlotFilters, col+'Filter', col, false, sliderOptions, format);
+                } else if (colType == 'str') {
+                    generateFormSelect(colVals, guiRowPlotFilters, col+'Filter', col, 'All'); // TODO this will potentially generate a select with a ton of options ...
+                } else if (colType == 'datetime') {
+                }
+            }
         }
     }
 
@@ -231,7 +316,6 @@ function gui() {
             .append('div')
             .attr('class','row')
 
-
         // options for specifying plot options
         var inputRowOptions = form.append('div')
             .attr('class','row')
@@ -240,6 +324,17 @@ function gui() {
             .append('div')
             .attr('class','col-sm-12')
             .append('h3').text('Options')
+            .append('div')
+            .attr('class','row')
+
+        // options for filtering data
+        var inputRowFilters = form.append('div')
+            .attr('class','row')
+            .attr('id',guiRowPlotFilters.replace('#',''))
+            .style('display', 'none')
+            .append('div')
+            .attr('class','col-sm-12')
+            .append('h3').text('Data filters')
             .append('div')
             .attr('class','row')
 
@@ -253,7 +348,8 @@ function gui() {
             .attr('class','btn btn-primary pull-right')
             .attr('type','button')
             .text('Render')
-            .on('click', function() {renderPlot('#canvas')})
+            .on('click', renderCallback)
+
     }
 
     /**
@@ -291,6 +387,93 @@ function gui() {
     }
 
     /**
+     * Generate a noUiSlider range input
+     *
+     * @param {string} selector - element to which to add form-group (label and select)
+     * @param {string} id - id to give to toggle
+     * @param {string} label - label text
+     * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
+     *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
+     * @param {obj} options - toggle options, see http://www.bootstraptoggle.com/ API
+     * @param {funct} format - function to format slider value; defaults to "[val]"
+     */
+    function generateFormSlider(selector, id, label, domClass, options, format) {
+
+        if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-4';
+        if (typeof format === 'undefined') format = function(d) { return '[' + d + ']'; };
+        if (typeof options === 'undefined' || !options) {
+            options = { // default slider if no options provided
+                start:50,
+                step: 1,
+                range: {
+                    min: 0,
+                    max: 100
+                }
+            };
+        }
+        id = typeof label == 'undefined' ? id : label;
+        var formGroup = inputHeader(selector, domClass, id);
+
+        formGroup.append('span')
+            .attr('class','muted')
+            .attr('id',id+'Val')
+            .text(format(options.start));
+
+        var slider = formGroup.append('div')
+            .attr('id','sliderWrap')
+            .node()
+
+        // generate slider
+        noUiSlider.create(slider, options);
+
+        // add event listener for slider change
+        slider.noUiSlider.on('slide', function(d) {
+            jQuery('#' + id + 'Val').text(format(d));
+        });
+    }
+
+    /**
+     * Add DOM header elements for each form input
+     * including a bootstrap form-group with label
+     */
+    function inputHeader(selector, domClass, id) {
+        var formGroup = d3.select(selector).append('div')
+            .attr('class', 'form-group ' + domClass)
+        
+        formGroup.append('label')
+            .attr('for',id)
+            .html(id)
+
+        return formGroup;
+    }
+
+    /**
+     * Generate a bootstrap toggle input
+     *
+     * @param {string} selector - element to which to add form-group (label and select)
+     * @param {string} id - id to give to toggle
+     * @param {string} label - label text
+     * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
+     *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
+     * @param {obj} options - toggle options, see http://www.bootstraptoggle.com/ API
+     */
+    function generateFormToggle(selector, id, label, domClass, options) {
+
+        if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-2';
+        id = typeof label == 'undefined' ? id : label;
+        var formGroup = inputHeader(selector, domClass, id);
+            
+        formGroup.append('br')
+
+        var toggle = formGroup.append('input')
+            .attr('type','checkbox')
+            .attr('data-toggle','toggle')
+            .attr('id',id)
+
+        jQuery('input#'+id).bootstrapToggle(options); //activate
+    }
+
+    /**
      * Generate a select used in a form along with the label. Note that DOM generated
      * by this function will be assigned a col-sm-4 class.
      *
@@ -304,28 +487,25 @@ function gui() {
      * @param {string} selector - element to which to add form-group (label and select)
      * @param {string} id - id to give to select
      * @param {string} label - label text
-     * @param {obj} valMap - (optional) keys should all be present in 'vals', value
-     *  will be set in the option value attribute; if not provided, 'vals' will
-     *  define the values
-     * @param {bool} allowEmpty - (optional, default=False) whether to add an 'empty'
-     *                            select option the value for which will be ""
+     * @param {str/obj} addOption - (optional, default=False) whether to prepend an additional
+     *  in the select list, allows for things like 'All' or 'None' - note this will be the first option
      * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
      *
      * @return select DOM
      *
      */
-    function generateFormSelect(vals, selector, id, label, allowEmpty, domClass) {
+    function generateFormSelect(vals, selector, id, label, addOption, domClass) {
 
-        if (typeof allowEmpty === 'undefined') allowEmpty = false;
-        if (typeof domClass === 'undefined') domClass = 'col-sm-4';
+        if (typeof addOption === 'undefined') addOption = false;
+        if (typeof domClass === 'undefined' || domClass == false) domClass = 'col-sm-4';
 
         var formGroup = d3.select(selector).append('div')
             .attr('class', 'form-group ' + domClass)
         
         formGroup.append('label')
             .attr('for',id)
-            .html(label)
+            .html(typeof label == 'undefined' ? id : label)
 
         var select = formGroup.append('select')
             .attr('class','form-control')
@@ -338,10 +518,18 @@ function gui() {
             .text(function (d,i) { return Array.isArray(vals) ? d : Object.values(vals)[i]; })
             .attr('value', function (d) { return d; });
 
-        if (allowEmpty) {
-            select.append('option')
-                .text('[None]')
-                .attr('value',null);
+        // prepend option to select
+        if (addOption) {
+            var value = '';
+            var text = '';
+            if (typeof addOption !== 'object') {
+                value = addOption;
+                text = addOption;
+            } else {
+                value = Object.keys(addOption)[0];
+                text = Object.keys(addOption)[1];
+            }
+            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(value);
         }
 
         return select;
@@ -355,13 +543,13 @@ function gui() {
     function populateGUI(options) {
 
         if (!options) displayWarning("You must first set the <code>options</code> attribute before building the GUI", false, true);
-        console.log(options);
 
         // setup plot basics
         d3.select(guiRowPlotBasics).style('display',null);
-        generateFormSelect(plotTypes(), guiRowPlotBasics, plotTypesID.replace('#',''), "Plot type", true)
-        jQuery(plotTypesID).on('change', plotTypeChange(plotTypesID));
+        generateFormSelect(plotTypes(), guiRowPlotBasics, plotTypesID.replace('#',''), "Plot type")
+        d3.select(plotTypesID).on('change', plotTypeChange);
 
+        plotTypeChange(); // fire to select first plot type
     }
 
 
@@ -373,6 +561,12 @@ function gui() {
     });
     Object.defineProperty(this,"container",{
         get: function() { return container; }, set: function(_) { container = _; }
+    });
+    Object.defineProperty(this,"renderCallback",{
+        get: function() { return renderCallback; }, set: function(_) { renderCallback = _; }
+    });
+    Object.defineProperty(this,"onComplete",{
+        get: function() { return onComplete; }, set: function(_) { onComplete = _; }
     });
 
 

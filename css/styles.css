@@ -23,3 +23,17 @@ text.nv-axislabel {
     font-weight: bold;
 }
 
+.muted {
+    text-decoration: none;
+    color: gray;
+}
+
+span.muted {
+    font-weight: 300;
+    margin-left: 5px;
+}
+
+.noUi-horizontal {
+    margin: 7px 16px 7px 16px;
+}
+

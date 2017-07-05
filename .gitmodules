@@ -13,3 +13,6 @@
 [submodule "lib/bootstrap-toggle"]
 	path = lib/bootstrap-toggle
 	url = https://github.com/minhur/bootstrap-toggle.git
+[submodule "lib/nvd3"]
+	path = lib/nvd3
+	url = git@github.com:ConstantinoSchillebeeckx/nvd3.git

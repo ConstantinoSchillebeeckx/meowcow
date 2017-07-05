@@ -12,8 +12,9 @@
         <!-- CSS -->
         <link rel="stylesheet" type="text/css" href='https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css' />
         <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous" />
-        <link rel="stylesheet" type="text/css" href="nvd3/build/nv.d3.min.css" />
-        <link rel="stylesheet" type="text/css" href="distroplot/css/distrochart.css">
+        <link rel="stylesheet" type="text/css" href="lib/nvd3/build/nv.d3.min.css" />
+        <link rel="stylesheet" type="text/css" href="lib/bootstrap-toggle/css/bootstrap-toggle.min.css" />
+        <link rel="stylesheet" type="text/css" href="lib/noUiSlider/distribute/nouislider.min.css" />
         <link rel="stylesheet" type="text/css" href="css/styles.css" />
  
 
@@ -21,15 +22,13 @@
         <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js" integrity="sha256-dsOXGNHAo/syFnazt+KTBsCQeRmlcW1XKL0bCK4Baec=" crossorigin="anonymous"></script> 
-        <script src="nvd3/build/nv.d3.min.js"></script>
-        <script src="distroplot/js/distrochart.js" charset="utf-8"></script>
+        <script src="lib/nvd3/build/nv.d3.min.js"></script>
+        <script src="lib/bootstrap-toggle/js/bootstrap-toggle.min.js"></script>
+        <script src="lib/noUiSlider/distribute/nouislider.min.js"></script>
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
         <script src="js/gui.js"></script>
         <script src="js/main.js"></script>
         <script src="js/nvd3.js"></script>
-        <script>   
-            //jQuery(function() { preLoad(inputDat, colTypes); });
-        </script>
 
 
 
@@ -44,47 +43,94 @@
 
     <script>
         $(function() {
-var setup = {
-    plotTypes: {
-        distroPlot: {
-            name: 'distroPlot',
-            label: 'distro plot',
-            allowFacets: true,
-            setup: {
-                x: {
-                    type: 'interval'
+
+            preLoad(inputDat, colTypes);
+
+            // setup GUI
+            var setup = {
+                plotTypes: {
+                    distroPlot: {
+                        name: 'distroPlot',
+                        label: 'distro plot',
+                        allowFacets: true,
+                        setup: {
+                            x: {
+                                type: 'interval'
+                            },
+                            y : {
+                                type: 'interval'
+                            },
+                            z : {
+                                name: 'Color group',
+                                type: 'ordinal'
+                            },
+                        },
+                        options: [
+                            {
+                                name: 'plotType',
+                                label: 'Style',
+                                type: 'select',
+                                values: ['box','violin']
+                            },{
+                                name: 'moo',
+                                type: 'toggle',
+                                options: {
+                                    on: 'Enabled',
+                                    off: 'Disabled'
+                                }
+                            }, {
+                                name: 'meow',
+                                type: 'slider',
+                                format: function(d) { return '[' + parseInt(d) + ']' }
+                            }
+                        ]
+                    },
+                    scatter: {
+                        name: 'scatterPlot',
+                        label: 'scatter plot',
+                        allowFacets: false,
+                        setup: {
+                            x: {
+                                type: 'interval'
+                            },
+                            y : {
+                                type: 'interval'
+                            },
+                            z : {
+                                name: 'Color group',
+                                type: 'ordinal'
+                            },
+                        },
+                        options: [
+                            {
+                                name: 'plotType',
+                                label: 'Style',
+                                type: 'select',
+                                values: ['box','violin']
+                            },{
+                                name: 'moo',
+                                type: 'toggle',
+                                options: {
+                                    on: 'Enabled',
+                                    off: 'Disabled'
+                                }
+                            }, {
+                                name: 'meow',
+                                type: 'slider',
+                            }
+                        ]
+                    }
                 },
-                y : {
-                    type: 'interval'
-                },
-                z : {
-                    name: 'Color group',
-                    type: 'ordinal'
-                },
-            },
-            options: [
-                {
-                    name: 'plotType',
-                    label: 'Style',
-                    type: 'select',
-                    values: ['box','violin']
-                }
-            ]
-        }
-    },
-    colMap: colTypes,
-}
+                colMap: colTypes,
+            }
 
 
-var moo = new gui();
-moo.options = setup;
-moo.container = "#guiWrap"
-
-
-moo.init();
-
-
-
+            var moo = new gui();
+            moo.options = setup;
+            moo.container = "#guiWrap"
+            moo.renderCallback = function() { renderPlot(); }
+            moo.onComplete = function() { preLoad(inputDat, colTypes); }
+            moo.init();
 
         });
     </script>

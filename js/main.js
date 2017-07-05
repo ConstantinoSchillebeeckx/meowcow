@@ -20,18 +20,9 @@ function preLoad(inputDat, colTypes) {
 
     // GLOBAL!
     // - dat: input data loaded from js/tall.js
-    // - cols: input object loaded from js/tall.js with datatable fields as keys and SQL column type as values
-    typesMap = {
-        'str': 'category', 
-        'float':'indexed', 
-        'int':'indexed', 
-        'datetime':'timeseries'
-    } // map from SQL field type to axis type
-
+    // - colsTypes: input object loaded from js/tall.js with datatable fields as keys and SQL column type as values
     dat = convertToJSON(inputDat, colTypes);
     unique = getAllUnique(dat, colTypes);
-
-    makeGUI(colTypes);
 
 }
 
@@ -58,10 +49,13 @@ function preLoad(inputDat, colTypes) {
  * @return void
 */
 function renderPlot(sel) {
+    console.log('render')
 
     // clear any previously existent plots/warnings
     jQuery(sel).empty();
     jQuery('#warning').empty();
+
+    return
 
     // get GUI vals
     var guiVals = getGUIvals('form');
@@ -282,9 +276,12 @@ function getAllUnique(dat, colTypes) {
     }
 
     keys.forEach(function(key) {
-        var unique = [...new Set(dat.map(item => item[key]))].sort(); // http://stackoverflow.com/a/35092559/1153897
-        if (colTypes[key] == 'int' || colTypes[key] == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
-        vals[key] = unique.map(function(d) { return d });
+        var colType = colTypes[key].type
+        if (colType !== 'excluded') {
+            var unique = [...new Set(dat.map(item => item[key]))].sort(); // http://stackoverflow.com/a/35092559/1153897
+            if (colType == 'int' || colType == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
+            vals[key] = unique.map(function(d) { return d });
+        }
     })
 
     return vals;
@@ -351,134 +348,3 @@ function convertToNumber(str) {
     return (isNaN(convert)) ? str : convert;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * Display a dismissible alert inside a div
- * with id 'warning'
- *
- * Note: this will clear out any divs
- * with the class "facetRow"
- *
- * @param {str} message - message to display
- * @param {bool} error [optional] - if true
- *  alert class will be .alert-danger (red), otherwise
- *  class will be .alert-warning
- *
- * @return void
-*/
-
-function displayWarning(message, error=false) {
-
-    if (typeof error == 'undefined') error = false;
-
-    if (error) {
-        var tmp = '<div class="alert alert-danger alert-dismissible" role="alert">';
-    } else {
-        var tmp = '<div class="alert alert-warning alert-dismissible" role="alert">';
-    }
-    tmp += '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
-    tmp += message;
-    tmp += '</div>';
-    jQuery('#warning').html(tmp);
-    jQuery('.facetRow').empty(); // clear out any displayed plot
-
-}
-
-
-
-
-/**
- * Once all GUI options and data are set, we can
- * render the distro plot
- *
- * @param {obj} dat - data for each facet in form {row: col: {dat}}
- * @param {string} sel - selector for facet into which to render plot
- * @param {obj} guiVals - GUI option values
- * @param {string} title - [optional] title for plot, should be null if no title
- *
- * @return void
- */
-function populateDistroChart(dat, sel, guiVals, title) {
-
-    if (typeof dat === 'undefined') return; // no data for this row & col combination
-
-    jQuery(sel).addClass('chart-wrapper'); // needed for styling
-
-    var chart = makeDistroChart({
-        data:dat,
-        xName:guiVals.axisX.label,
-        yName:guiVals.axisY.label,
-        selector:sel,
-        constrainExtremes:true,
-        title:title,
-        margin:{top: 15, right: 20, bottom: 60, left: 50},
-    });
-
-    // init
-    chart.renderBoxPlot();
-    chart.renderDataPlots();
-    chart.renderViolinPlot({showViolinPlot:false});
-    chart.renderNotchBoxes({showNotchBox:false});
-
-    // if [None] plot type
-    if (guiVals.plotType.value == null) chart.boxPlots.hide();
-
-    // notched box plot
-    if (guiVals.plotType.value == 'box' && guiVals.notchedBox) {
-        chart.renderNotchBoxes({showNotchBox:true});
-        chart.boxPlots.show({showBox:false})
-    }
-
-    // change shape if needed (from box type)
-    if (guiVals.plotType.value == 'violin') {
-        if (guiVals.boundedViolin) { // bounded violin
-            chart.violinPlots.show({reset:true,clamp:1});
-        } else { // unbounded violin
-            chart.violinPlots.show({reset:true,clamp:0});
-        }
-        chart.boxPlots.show({reset:true, showWhiskers:false, showOutliers:false, boxWidth:10, lineWidth:15, colors:['#555']});
-        chart.notchBoxes.hide();
-        chart.dataPlots.change({showPlot:false,showBeanLines:false})
-    } else if (guiVals.plotType.value == 'bean') {
-        chart.violinPlots.show({reset:true, width:75, clamp:0});
-        chart.dataPlots.show({showBeanLines:true, beanWidth:15, showPlot:false, colors:['#555']});
-        chart.boxPlots.hide();
-        chart.notchBoxes.hide()
-    }
-
-    // add individual points
-    if (guiVals.points.value == 'swarm') {
-        chart.dataPlots.show({showPlot:true, plotType:'beeswarm', colors:null});
-    } else if (guiVals.points.value == 'scatter') {
-        chart.dataPlots.show({showPlot:true, plotType:20, colors:null});
-    }
-
-
-    if (guiVals.trendMean) {
-        chart.dataPlots.change({showLines:['mean'], lineColors:{mean:'#555'}})
-    } else {
-        chart.dataPlots.change({showLines:false})
-    }
-
-    return chart;
-}
-
