@@ -28,7 +28,7 @@
         <script src="js/main.js"></script>
         <script src="js/nvd3.js"></script>
         <script>   
-            jQuery(function() { preLoad(inputDat, colTypes); });
+            //jQuery(function() { preLoad(inputDat, colTypes); });
         </script>
 
 
@@ -37,18 +37,57 @@
 
 
     <body class='container-fluid'>
-        <div class='row'>
-            <div class='col-sm-12'>
-                <div id="gui"></div>
-            </div>
-        </div>
-        <div class='row'>
-            <div class='col-sm-12'>
-                <div id="warning"></div>
-            </div>
-        </div>
+        <div id="guiWrap"></div>
         <div id="canvas"></div>
     </body>
+
+
+    <script>
+        $(function() {
+var setup = {
+    plotTypes: {
+        distroPlot: {
+            name: 'distroPlot',
+            label: 'distro plot',
+            allowFacets: true,
+            setup: {
+                x: {
+                    type: 'interval'
+                },
+                y : {
+                    type: 'interval'
+                },
+                z : {
+                    name: 'Color group',
+                    type: 'ordinal'
+                },
+            },
+            options: [
+                {
+                    name: 'plotType',
+                    label: 'Style',
+                    type: 'select',
+                    values: ['box','violin']
+                }
+            ]
+        }
+    },
+    colMap: colTypes,
+}
+
+
+var moo = new gui();
+moo.options = setup;
+moo.container = "#guiWrap"
+
+
+moo.init();
+
+
+
+
+        });
+    </script>
 
 
 </html>

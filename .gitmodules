@@ -7,3 +7,9 @@
 [submodule "nvd3"]
 	path = nvd3
 	url = https://github.com/novus/nvd3.git
+[submodule "lib/noUiSlider"]
+	path = lib/noUiSlider
+	url = https://github.com/leongersen/noUiSlider.git
+[submodule "lib/bootstrap-toggle"]
+	path = lib/bootstrap-toggle
+	url = https://github.com/minhur/bootstrap-toggle.git
