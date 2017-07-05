@@ -22,11 +22,15 @@ function gui() {
     // Private Variables
     //------------------------------------------------------------
     var plotTypesID = '#plotTypes',
-        guiRowPlotBasics = '#plotSetup',
-        guiRowPlotFacets = '#plotFacets',
-        guiRowPlotOptions = '#plotOptions',
-        guiRowPlotFilters = '#plotFilter'
+        basicsTab = '#plotSetup',
+        facetsTab = '#plotFacets',
+        optionsTab = '#plotOptions',
+        filtersTab = '#plotFilter'
 
+    $('.nav-tabs a').click(function (e) {
+        e.preventDefault()
+        jQuery(this).tab('show')
+    })
 
     /**
      * Get the currently selected plot type
@@ -121,6 +125,7 @@ function gui() {
         setupPlotFacets();
         setupPlotOptions();
         setupPlotFilters();
+        jQuery(basicsTab).tab('show');
     }
 
 
@@ -133,12 +138,13 @@ function gui() {
         var axes = ['x','y','z'];
         var availableAxes = getAvailableAxes()
 
+
         axes.forEach(function(d) {
             if (availableAxes.indexOf(d) !== -1) {
                 var cols = getCols(getPlotType(), d);
                 var label = "name" in getAxisSetup(d) ? getAxisSetup(d).name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
-                generateFormSelect(cols, guiRowPlotBasics, d +"-axis", label, false, domClass);
+                generateFormSelect(cols, basicsTab, d +"-axis", label, false, domClass);
             }
         });
     }
@@ -152,15 +158,18 @@ function gui() {
     function setupPlotFacets() {
 
         if (getAllowFacets()) {
-            d3.select(guiRowPlotFacets).style('display',null);
+
+            // add tab and container
+            addTab(facetsTab, 'Facets');
+
             var dir = ['horizontal','vertical'];
 
             dir.forEach(function(d) {
                 var cols = getCols('ordinal');
-                generateFormSelect(cols, guiRowPlotFacets, d+'-facet', d);
+                generateFormSelect(cols, facetsTab, d+'-facet', d);
             });
         } else {
-            d3.select(guiRowPlotFacets).style('display','hidden');
+            d3.select(facetsTab).style('display','hidden');
         }
     }
 
@@ -173,20 +182,21 @@ function gui() {
         var plotOptions = getPlotOptions();
         if (plotOptions) {
 
-            d3.select(guiRowPlotOptions).style('display',null);
+            // add tab and container
+            addTab(optionsTab, 'Options');
 
             plotOptions.forEach(function(d) {
                 if (d.type == 'select') {
-                    generateFormSelect(d.values, guiRowPlotOptions, d.name, d.label, d.allowEmpty, d.domClass);
+                    generateFormSelect(d.values, optionsTab, d.name, d.label, d.allowEmpty, d.domClass);
                 } else if (d.type == 'toggle') {
-                    generateFormToggle(guiRowPlotOptions, d.name, d.label, d.domClass, d.options);
+                    generateFormToggle(optionsTab, d.name, d.label, d.domClass, d.options); // TODO width of toggle not being calculated - I think it's due to the tabs
                 } else if (d.type == 'slider') {
-                    generateFormSlider(guiRowPlotOptions, d.name, d.label, d.domClass, d.options, d.format);
+                    generateFormSlider(optionsTab, d.name, d.label, d.domClass, d.options, d.format);
                 }
             })
 
         } else {
-            d3.select(guiRowPlotOptions).style('display','hidden');
+            d3.select(optionsTab).style('display','hidden');
         }
     }
 
@@ -197,7 +207,10 @@ function gui() {
     function setupPlotFilters() {
 
         if (typeof unique !== 'undefined') { // unique is a global set with preLoad()
-            d3.select(guiRowPlotFilters).style('display',null);
+
+            // add tab and container
+            addTab(filtersTab, 'Filters');
+
             var colMap = getCols();
 
             for (var col in colMap) {
@@ -220,9 +233,9 @@ function gui() {
                     } else if (colType == 'float') {
                         format = colMap[col].format ? colMap[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + paraseFloat(d[1]).toFixed(2) + ']'; };
                     }
-                    generateFormSlider(guiRowPlotFilters, col+'Filter', col, false, sliderOptions, format);
+                    generateFormSlider(filtersTab, col+'Filter', col, false, sliderOptions, format);
                 } else if (colType == 'str') {
-                    generateFormSelect(colVals, guiRowPlotFilters, col+'Filter', col, 'All'); // TODO this will potentially generate a select with a ton of options ...
+                    generateFormSelect(colVals, filtersTab, col+'Filter', col, 'All'); // TODO this will potentially generate a select with a ton of options ...
                 } else if (colType == 'datetime') {
                 }
             }
@@ -286,57 +299,18 @@ function gui() {
 
         var form = panel.append('div')
             .attr('id','guiBody')
-            .attr('class','panel-collapse collapse in')
-            .append('div')
-            .attr('class','panel-body')
+            .attr('class','panel-collapse collapse in panel-body')
             .append('form')
 
+        // tabs live here
+        form.append('ul')
+            .attr('class','nav nav-tabs')
+            .attr('role','tablist')
 
-        // options for plot basics
-        var inputRowSetup = form.append('div')
-            .attr('class','row')
-            .attr('id',guiRowPlotBasics.replace('#',''))
-            .style('display', 'none')
-            .append('div')
-            .attr('class','col-sm-12')
-            .append('h3').text('Basics')
-            .append('div')
-            .attr('class','row')
+        form.append('div')
+            .attr('class','tab-content')
 
-
-        // options for specifying row/col facets
-        var inputRowFacet = form.append('div')
-            .attr('id',guiRowPlotFacets.replace('#',''))
-            .attr('class','row')
-            .style('display', 'none')
-            .append('hr')
-            .append('div')
-            .attr('class','col-sm-12')
-            .append('h3').text('Facets')
-            .append('div')
-            .attr('class','row')
-
-        // options for specifying plot options
-        var inputRowOptions = form.append('div')
-            .attr('class','row')
-            .attr('id',guiRowPlotOptions.replace('#',''))
-            .style('display', 'none')
-            .append('div')
-            .attr('class','col-sm-12')
-            .append('h3').text('Options')
-            .append('div')
-            .attr('class','row')
-
-        // options for filtering data
-        var inputRowFilters = form.append('div')
-            .attr('class','row')
-            .attr('id',guiRowPlotFilters.replace('#',''))
-            .style('display', 'none')
-            .append('div')
-            .attr('class','col-sm-12')
-            .append('h3').text('Data filters')
-            .append('div')
-            .attr('class','row')
+        form.append('hr')
 
         // submit button
         form.append('div')
@@ -349,6 +323,7 @@ function gui() {
             .attr('type','button')
             .text('Render')
             .on('click', renderCallback)
+
 
     }
 
@@ -536,17 +511,37 @@ function gui() {
 
     }
 
+    /**
+     * Append a tab to the GUI, assume ul .nav already exists
+     */
+    function addTab(id, text, active) {
+        // setup plot basics tab
+        d3.select('.nav').append('li')
+            .attr('role','presentation')
+            .attr('class', function() { return active ? 'active' : null})
+            .attr('id',id+'Tab')
+            .append('a')
+            .attr('role','tab')
+            .attr('data-toggle','tab')
+            .attr('href',id)
+            .text(text)
+
+        d3.select('.tab-content').append('div')
+            .attr('role','tabpanel')
+            .attr('class', function () { return active ? 'tab-pane row active' : 'tab-pane row'})
+            .attr('id',id.replace('#',''))
+
+    }
+
  
     /**
      * Parse GUI options and generate all DOM elements
      */
     function populateGUI(options) {
-
         if (!options) displayWarning("You must first set the <code>options</code> attribute before building the GUI", false, true);
 
-        // setup plot basics
-        d3.select(guiRowPlotBasics).style('display',null);
-        generateFormSelect(plotTypes(), guiRowPlotBasics, plotTypesID.replace('#',''), "Plot type")
+        addTab(basicsTab, 'Basics', true);
+        generateFormSelect(plotTypes(), basicsTab, plotTypesID.replace('#',''), "Plot type")
         d3.select(plotTypesID).on('change', plotTypeChange);
 
         plotTypeChange(); // fire to select first plot type
