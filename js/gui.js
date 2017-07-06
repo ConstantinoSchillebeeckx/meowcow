@@ -30,31 +30,33 @@ function gui() {
         var hLabel = facetVals['horizontal-facet'].label
         var vVal = facetVals['vertical-facet'].value
         var vLabel = facetVals['vertical-facet'].label
+        var wrapVal = facetVals.colWrap.value;
+        console.log(hVal, hLabel, vVal, vLabel, wrapVal)
 
         if (setupVals['x-axis'].label == setupVals['y-axis'].label) { // ensure x & y axis are different
             displayWarning("The X-axis field cannot be the same as the Y-axis field, please change one of them!", '#warningCol', true);
             return true;
         }
 
-        if (hVal || vVal) {
+        if (hVal !== null || vVal !== null || wrapVal > 0) {
 
             var facetRows = (hVal) ? unique[hLabel] : [null];
             var facetCols = (vVal) ? unique[vLabel] : [null];
 
-            if (guiVals.facetCol.value === null && guiVals.facetRow.value === null && guiVals.colWrap.value === null) {
-                displayWarning("In order to use facets, you must at least choose something for <code>Rows</code> or <code>Columns</code>", true);
+            if (hVal === null && vVal === null && wrapVal === null) {
+                displayWarning("In order to use facets, you must at least choose something for <code>Rows</code> or <code>Columns</code>", '#warningCol', true);
+                return true;
+            }
+            if (wrapVal > 0 && vVal !== null) {
+                displayWarning("You cannot specify a <code>Rows</code> option when specifying <code>Column wrap</code>.", '#warningCol', true);
+                return true;
+            }
+            if (vLabel === hLabel) {
+                displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", '#warningCol', true);
                 return true;
             }
             if (facetRows.length > 50 || facetCols.length > 50) { // limit how many facets can be rendered
-                displayWarning("Cancelling render because too many facets would be created.", true);
-                return true;
-            }
-            if (guiVals.colWrap.value > 0 && guiVals.facetRow.value !== null) {
-                displayWarning("You cannot specify both a <code>Rows</code> and <code>Columns</code> option when specifying <code>Column wrap</code>.", true);
-                return true;
-            }
-            if (guiVals.facetRow.label === guiVals.facetCol.label) {
-                displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", true);
+                displayWarning("Cancelling render because too many facets would be created.", '#warningCol', true);
                 return true;
             }
         }
@@ -273,8 +275,10 @@ function gui() {
 
             dir.forEach(function(d) {
                 var cols = getCols('ordinal');
-                generateFormSelect(cols, facetsTab, d+'-facet', d, {'None':''});
+                generateFormSelect(cols, facetsTab, d+'-facet', (d == 'horizontal') ? 'Columns' : 'Rows', {'None':''});
             });
+
+            generateFormTextInput(facetsTab, 'colWrap', 'Column wrap', false, 'number');
         } else {
             d3.select(facetsTab).style('display','hidden');
         }
@@ -545,8 +549,8 @@ function gui() {
                 }
             };
         }
-        id = typeof label == 'undefined' ? id : label;
-        var formGroup = inputHeader(selector, domClass, id);
+        label = typeof label === 'undefined' ? id : label;
+        var formGroup = inputHeader(selector, domClass, id, label);
 
         formGroup.append('span')
             .attr('class','muted')
@@ -592,13 +596,13 @@ function gui() {
      * Add DOM header elements for each form input
      * including a bootstrap form-group with label
      */
-    function inputHeader(selector, domClass, id) {
+    function inputHeader(selector, domClass, id, label) {
         var formGroup = d3.select(selector).append('div')
             .attr('class', 'form-group ' + domClass)
         
         formGroup.append('label')
             .attr('for',id)
-            .html(id)
+            .html(label)
 
         return formGroup;
     }
@@ -616,8 +620,8 @@ function gui() {
     function generateFormToggle(selector, id, label, domClass, options) {
 
         if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-2';
-        id = typeof label == 'undefined' ? id : label;
-        var formGroup = inputHeader(selector, domClass, id);
+        label = typeof label === 'undefined' ? id : label;
+        var formGroup = inputHeader(selector, domClass, id, label);
             
         formGroup.append('br')
 
@@ -627,6 +631,31 @@ function gui() {
             .attr('id',id)
 
         jQuery('input#'+id).bootstrapToggle(options); //activate
+    }
+
+
+    /**
+     * Generate a text input
+     *
+     * @param {string} selector - element to which to add form-group (label and select)
+     * @param {string} id - id/name to give to input
+     * @param {string} label - label text
+     * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
+     *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
+     * @param {str} type - type of input, 'text' or 'number'
+     */
+    function generateFormTextInput(selector, id, label, domClass, type) {
+
+        if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-4';
+        if (typeof type === 'undefined' || !type) type = 'text';
+        label = typeof label === 'undefined' ? id : label;
+        var formGroup = inputHeader(selector, domClass, id, label);
+            
+        var textInput = formGroup.append('input')
+            .attr('class','form-control')
+            .attr('type',type)
+            .attr('id',id)
+            .attr('name',id)
     }
 
     /**
