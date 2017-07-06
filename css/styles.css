@@ -1,8 +1,4 @@
-.error-bars {
-    stroke-width: 1;
-}
-
-#gui {
+#guiWrap {
     margin-top:10px;
 }
 

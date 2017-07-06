@@ -26,10 +26,6 @@ function gui() {
 
         var setupVals = guiVals[setupTab.replace('#','')];
         var facetVals = guiVals[facetsTab.replace('#','')];
-        var hVal = facetVals['horizontal-facet'].value
-        var hLabel = facetVals['horizontal-facet'].label
-        var vVal = facetVals['vertical-facet'].value
-        var vLabel = facetVals['vertical-facet'].label
         var wrapVal = facetVals.colWrap.value;
 
         if (setupVals['x-axis'].label == setupVals['y-axis'].label) { // ensure x & y axis are different
@@ -37,8 +33,13 @@ function gui() {
             return true;
         }
 
-        if (hVal !== null || vVal !== null || wrapVal > 0) {
+        // check that selected plot type is an option in nv.models (should be a key)
 
+        if (facetVals.facetOn || wrapVal > 0) {
+            var hVal = facetVals['horizontal-facet'].value
+            var hLabel = facetVals['horizontal-facet'].label
+            var vVal = facetVals['vertical-facet'].value
+            var vLabel = facetVals['vertical-facet'].label
             var facetRows = (hVal) ? unique[hLabel] : [null];
             var facetCols = (vVal) ? unique[vLabel] : [null];
 
@@ -116,6 +117,11 @@ function gui() {
                     guiVals[tab][slider] = sliderValues[tab][slider];
                 }
             }
+
+            // set a bool for facets on/off
+            if (tab == 'plotFacets') {
+                guiVals['plotFacets'].facetOn = (guiVals['plotFacets']['horizontal-facet'].value !== null || guiVals['plotFacets']['vertical-facet'].value !== null)
+            }
         })
 
 
@@ -147,13 +153,13 @@ function gui() {
 
     /**
      * Return an obj of plotTypes available in the specified options
-     * keys will be the plot type lable, and values will be the name
+     * keys will be the plot type label, and values will be the name
      */
     var plotTypes = function() { 
         var tmp = {}; 
         for (var d in options.plotTypes) {
             var dat = options.plotTypes[d];
-            tmp[dat.name] = 'label' in dat ? dat.label : dat.name;
+            tmp[d] = 'label' in dat ? dat.label : dat.name;
         }
         return tmp;
     };
@@ -298,11 +304,11 @@ function gui() {
 
             plotOptions.forEach(function(d) {
                 if (d.type == 'select') {
-                    generateFormSelect(d.values, optionsTab, d.name, d.label, d.allowEmpty, d.domClass);
+                    generateFormSelect(d.values, optionsTab, d.accessor, d.label, d.allowEmpty, d.domClass);
                 } else if (d.type == 'toggle') {
-                    generateFormToggle(optionsTab, d.name, d.label, d.domClass, d.options); // TODO width of toggle not being calculated - I think it's due to the tabs
+                    generateFormToggle(optionsTab, d.accessor, d.label, d.domClass, d.options); // TODO width of toggle not being calculated - I think it's due to the tabs
                 } else if (d.type == 'slider') {
-                    generateFormSlider(optionsTab, d.name, d.label, d.domClass, d.options, d.format);
+                    generateFormSlider(optionsTab, d.accessor, d.label, d.domClass, d.options, d.format);
                 }
             })
 
@@ -460,6 +466,7 @@ function gui() {
             .attr('class','btn btn-primary pull-right')
             .attr('type','button')
             .text('Render')
+            .attr('id','renderBtn')
             .on('click', renderCallback)
 
         return true;
@@ -472,7 +479,8 @@ function gui() {
      * aren't loaded yet
      */
     function uploadData() {
-
+        // TODO
+        return false;
     }
 
 
@@ -549,7 +557,7 @@ function gui() {
                 }
             };
         }
-        label = typeof label === 'undefined' ? id : label;
+        label = typeof label === 'undefined' ? id : label; // in case label not set in options, use the id
         var formGroup = inputHeader(selector, domClass, id, label);
 
         formGroup.append('span')
@@ -569,8 +577,9 @@ function gui() {
 
         // add event listener for slider change
         slider.noUiSlider.on('slide', function(d) {
-            jQuery('#' + id + 'Val').text(format(d));
-            sliderValues[id] = d.apply(convertToNumber);
+            jQuery('#' + id + 'Val').text(format(d)); // update displayed value
+            var tabName = jQuery('#' + id + 'Val').closest('.tab-pane').attr('id');
+            sliderValues[tabName][id] = d.map(function(e) { return convertToNumber(e); });
         });
     }
 
@@ -611,7 +620,7 @@ function gui() {
      * Generate a bootstrap toggle input
      *
      * @param {string} selector - element to which to add form-group (label and select)
-     * @param {string} id - id to give to toggle
+     * @param {string} id - id/name to give to toggle
      * @param {string} label - label text
      * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
@@ -620,7 +629,7 @@ function gui() {
     function generateFormToggle(selector, id, label, domClass, options) {
 
         if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-2';
-        label = typeof label === 'undefined' ? id : label;
+        label = typeof label === 'undefined' ? id : label; // in case label not set in options, use the id
         var formGroup = inputHeader(selector, domClass, id, label);
             
         formGroup.append('br')
@@ -629,6 +638,7 @@ function gui() {
             .attr('type','checkbox')
             .attr('data-toggle','toggle')
             .attr('id',id)
+            .attr('name',id);
 
         jQuery('input#'+id).bootstrapToggle(options); //activate
     }
@@ -648,7 +658,7 @@ function gui() {
 
         if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-4';
         if (typeof type === 'undefined' || !type) type = 'text';
-        label = typeof label === 'undefined' ? id : label;
+        label = typeof label === 'undefined' ? id : label; // in case label not set in options, use the id
         var formGroup = inputHeader(selector, domClass, id, label);
             
         var textInput = formGroup.append('input')
@@ -670,7 +680,7 @@ function gui() {
      *   array elements; if an object is passed keys will be the option value and
      *   obj values will be the option text.
      * @param {string} selector - element to which to add form-group (label and select)
-     * @param {string} id - id to give to select
+     * @param {string} id - id/name to give to select
      * @param {string} label - label text
      * @param {str/obj} addOption - (optional, default=False) whether to prepend an additional
      *  in the select list, allows for things like 'All' or 'None' - note this will be the first option
@@ -684,13 +694,9 @@ function gui() {
 
         if (typeof addOption === 'undefined') addOption = false;
         if (typeof domClass === 'undefined' || domClass == false) domClass = 'col-sm-4';
+        label = typeof label === 'undefined' ? id : label; // in case label not set in options, use the id
 
-        var formGroup = d3.select(selector).append('div')
-            .attr('class', 'form-group ' + domClass)
-        
-        formGroup.append('label')
-            .attr('for',id)
-            .html(typeof label == 'undefined' ? id : label)
+        var formGroup = inputHeader(selector, domClass, id, label);
 
         var select = formGroup.append('select')
             .attr('class','form-control')

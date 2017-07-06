@@ -51,59 +51,60 @@ function preLoad(inputDat, colTypes) {
 function renderPlot(gui, sel) {
 
     // clear any previously existent plots/warnings
-    jQuery(sel).empty();
+    jQuery(sel).empty(); // TODO we should just update the chart if only the options are changed; that way we use the built-in transitions
     jQuery('#warning').empty();
 
 
     // get GUI vals
     var guiVals = gui.getGUIvals('form');
-    console.log(guiVals)
 
     // before rendering anything, let's ensure the selected GUI options make sense to render
     if (gui.guiWarnings(guiVals, unique)) return;
+    
+    // everything looks good, let's render!
+    jQuery('#renderBtn').html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
+    
 
     // generate facets and group data
     var facets = setupFacetGrid(sel, guiVals, dat, unique);
     var facetRows = Object.keys(facets);
     var facetCols = Object.keys(facets[facetRows[0]]);
 
+    var facetVals = guiVals.plotFacets;
+    var hVal = facetVals['horizontal-facet'].value
+    var vVal = facetVals['vertical-facet'].value
+    var hLabel = facetVals['horizontal-facet'].label
+    var vLabel = facetVals['vertical-facet'].label
 
     // draw plot in each facet
     facetRows.forEach(function(rowName,i) {
         facetCols.forEach(function(colName,j) {
-            selFacet = '#row_' + i + '-col_' + j;
-
+            var selFacet = '#row_' + i + '-col_' + j;
 
             var facetDat = facets[rowName][colName];
 
             if (typeof facetDat !== 'undefined') {
 
                 var title = null;
-                if (guiVals.facets) {
-                    if (guiVals.facetRow.value && guiVals.facetCol.value) {
-                        title = guiVals.facetRow.label + ' = ' + rowName + ' | ' + guiVals.facetCol.label + ' = ' + colName;
-                    } else if (guiVals.facetRow.value || guiVals.facetCol.value) {
-                        title = guiVals.facetRow.label ? guiVals.facetRow.label + ' = ' + rowName : guiVals.facetCol.label + ' = ' + colName;    
+                if (facetVals.facetOn) {
+                    if (hVal && vVal) {
+                        title = vVal + ' = ' + rowName + ' | ' + hVal + ' = ' + colName;
+                    } else if (hVal || vVal) {
+                        title = vVal ? vLabel + ' = ' + rowName : hLabel + ' = ' + colName;    
                     }
                 }
 
-                // currently using two libraries to render plots
-                // nvd3.js handles most plots
-                // categorical x-axis plots (except for bar) are handled by 'distroplot': http://bl.ocks.org/asielen/92929960988a8935d907e39e60ea8417
-/*
-                if (distroplotTypes.includes(guiVals.plotType.value)) { // use distroplot.js
-                    var chart = populateDistroChart(facetDat, selFacet, guiVals, title);
-                } else if (nvd3Types.includes(guiVals.plotType.value)) { // use nvd3.js
-                    var chart = populateNVD3Chart(facetDat, selFacet, guiVals, title);
-                }
-*/
+                var chart = populateChart(facetDat, selFacet, guiVals, gui, title);
             }
 
         });
 
         // update list of columns for new row
-        if (facetRows.length > 1) facetCols = Object.keys(facets[facetRows[1]]);
+        if (facetRows.length > 1 && (i+1) < facetRows.length) facetCols = Object.keys(facets[facetRows[i+1]]);
     })
+
+    
+    jQuery('#renderBtn').html('Update').prop('disabled', false); // TODO wait until everything finishes rendering ... async!
 }
 
 
@@ -144,23 +145,28 @@ function setupFacetGrid(sel, guiVals, dat, unique) {
     var numCols = colDat.length;
     var aspectRatio = 2.0; // width to height ratio
     var plotDom = d3.select(sel);
-    if (guiVals.facets) {  // if plotting with facets
-        if (guiVals.facetRow.value) { // if row facet specified
-            facetRow = guiVals.facetRow.label;
+    var facetVals = guiVals.plotFacets;
+
+    if (facetVals.facetOn) {  // if plotting with facets
+        var hVal = facetVals['horizontal-facet'].value
+        var vVal = facetVals['vertical-facet'].value
+        if (vVal) { // if row facet specified
+            facetRow = facetVals['vertical-facet'].label;
             rowDat = unique[facetRow];
         }
-        if (guiVals.facetCol.value) { // if col facet specified
-            facetCol = guiVals.facetCol.label;
+        if (hVal) { // if col facet specified
+            facetCol = facetVals['horizontal-facet'].label
             colDat = unique[facetCol];
         }
-        colWrap = (guiVals.colWrap) ? guiVals.colWrap.value : false;
+        colWrap = (facetVals.colWrap) ? facetVals.colWrap.value : false;
 
         numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
         numCols = (colWrap) ? colWrap : colDat.length;
     }
 
+
     // calculate width/height of each facet 
-    var colWidth = jQuery('#gui').width() / numCols;
+    var colWidth = jQuery('#guiWrap').width() / numCols;
     var rowHeight = colWidth / aspectRatio;
 
     // generate DOM elements
@@ -346,3 +352,124 @@ function convertToNumber(str) {
     return (isNaN(convert)) ? str : convert;
 
 }
+
+
+
+
+
+
+/**
+ * Once all GUI options and data are set, we can
+ * render the C3 plot
+ *
+ * @param {obj} dat - data for each facet
+ * @param {string} sel - selector for facet into which to render plot
+ * @param {obj} formVals - GUI option values
+ * @param {obj} gui - GUI object
+ * @param {string} title - [optional] title for plot, should be null if no title
+ *
+ * @return void
+ */
+function populateChart(dat, sel, formVals, gui, title) {
+
+
+    var plotType = formVals.plotSetup.plotTypes.value;
+    var plotOptions = gui.options.plotTypes[plotType]; // this defines all plot options and accessors
+    var datReady = dat;
+    var axes = ['x','y','z'];
+
+    // nvd3 expects SVG to exist already
+    d3.select(sel).append('svg');
+
+    // parse data if needed before plotting
+    var parseFunc = plotOptions.parseData;
+    if (typeof parseFunc === "function") {
+        datReady = parseFunc(dat);
+    }
+
+
+    // create the chart
+    nv.addGraph(function() {
+        var chart = nv.models[plotType]()
+        
+        // setup data accessors for each axis
+        // we will need the name of the accessor function to be called on the chart
+        // as well as the actual accessor function (which is defined by the GUI)
+        axes.forEach(function(d) {
+            var accessorName = plotOptions.setup[d].accessor;
+            var accessorAttr = formVals.plotSetup[d+'-axis'].value; // get the GUI value for the given chart axis option
+            if (accessorName) {
+                var accessorFunc = function(d) { return d[accessorAttr] };
+                chart[accessorName](accessorFunc);
+            }
+        });
+
+        // set chart options
+        plotOptions.options.forEach(function(d) {
+            var optionName = d.accessor;
+            var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
+            if (typeof optionValue === 'object') optionValue = optionValue.value; // select value stored as object, get just the value
+            chart[optionName](optionValue)
+        })
+
+        // set title
+        if (title !== null && title) chart.title(title);
+
+
+        //formatAxisTitle(chart, guiVals);
+        //formatTooltip(chart, guiVals);
+
+        d3.select(sel + ' svg')
+            .datum(datReady)
+            .call(chart);
+
+        nv.utils.windowResize(chart.update);
+
+    });
+
+}
+
+
+/*
+ * Adjust default tooltip formatting
+ *
+ * @param {obj} chart - nvd3 chart object
+ * @param {obj} guiVals - GUI option values
+ *
+ * @return void
+ */
+function formatTooltip(chart, formVals) {
+    chart.tooltip.headerFormatter(function (d) { return guiVals.axisX.label + ' ' + d })
+}
+
+
+
+
+/*
+ * Add axis title and format tick labels based on
+ * field type.
+ *
+ * @param {obj} chart - nvd3 chart object
+ * @param {obj} guiVals - GUI option values
+ *
+ * @return void
+ */
+
+function formatAxisTitle(chart, guiVals) {
+
+    // format tick labels
+    if (guiVals.axisX.value === 'float') {
+        chart.xAxis.tickFormat(d3.format('.02f'));
+    }
+    if (guiVals.axisY.value === 'float') {
+        chart.yAxis.tickFormat(d3.format('.02f'));
+    }
+
+    // set axis titles
+    chart.showXAxis(true);
+    chart.showYAxis(true);
+    chart.xAxis.axisLabel(guiVals.axisX.label)
+    chart.yAxis.axisLabel(guiVals.axisY.label)
+
+}
+
