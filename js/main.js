@@ -62,8 +62,6 @@ function renderPlot(gui, sel) {
     // before rendering anything, let's ensure the selected GUI options make sense to render
     if (gui.guiWarnings(guiVals, unique)) return;
 
-    return
-
     // generate facets and group data
     var facets = setupFacetGrid(sel, guiVals, dat, unique);
     var facetRows = Object.keys(facets);
@@ -92,11 +90,13 @@ function renderPlot(gui, sel) {
                 // currently using two libraries to render plots
                 // nvd3.js handles most plots
                 // categorical x-axis plots (except for bar) are handled by 'distroplot': http://bl.ocks.org/asielen/92929960988a8935d907e39e60ea8417
+/*
                 if (distroplotTypes.includes(guiVals.plotType.value)) { // use distroplot.js
                     var chart = populateDistroChart(facetDat, selFacet, guiVals, title);
                 } else if (nvd3Types.includes(guiVals.plotType.value)) { // use nvd3.js
                     var chart = populateNVD3Chart(facetDat, selFacet, guiVals, title);
                 }
+*/
             }
 
         });

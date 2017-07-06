@@ -31,7 +31,6 @@ function gui() {
         var vVal = facetVals['vertical-facet'].value
         var vLabel = facetVals['vertical-facet'].label
         var wrapVal = facetVals.colWrap.value;
-        console.log(hVal, hLabel, vVal, vLabel, wrapVal)
 
         if (setupVals['x-axis'].label == setupVals['y-axis'].label) { // ensure x & y axis are different
             displayWarning("The X-axis field cannot be the same as the Y-axis field, please change one of them!", '#warningCol', true);
@@ -166,7 +165,8 @@ function gui() {
      * if no type is passed
      *
      * @param {str} type - [optional] type of columns requested, either interval
-     *   (int, float) or ordinal (str, datetime)
+     *   (int, float) or ordinal (str, datetime); if not provided, will return
+     *   options.colMap
      *
      * @return {array/obj} 
      *  - column names that match column type
@@ -247,13 +247,13 @@ function gui() {
         var axes = ['x','y','z'];
         var availableAxes = getAvailableAxes()
 
-
         axes.forEach(function(d) {
             if (availableAxes.indexOf(d) !== -1) {
-                var cols = getCols(getPlotType(), d);
-                var label = "name" in getAxisSetup(d) ? getAxisSetup(d).name : d.toUpperCase()+"-axis";
+                var axisSetup = getAxisSetup(d);
+                var cols = getCols(axisSetup.type);
+                var label = "name" in axisSetup ? axisSetup.name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
-                generateFormSelect(cols, setupTab, d +"-axis", label, false, domClass);
+                generateFormSelect(cols, setupTab, d +"-axis", label, (d=='z') ? {'None':null} : false, domClass);
             }
         });
     }
