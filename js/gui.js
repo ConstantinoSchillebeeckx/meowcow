@@ -6,15 +6,121 @@ function gui() {
     //------------------------------------------------------------
     var options = false,
         container = false,
-        renderCallback = false, // to be called by "Render button"
-        onComplete = false // to be called after GUI is setup
+        renderCallback = false // to be called by "Render button"
 
     this.init = function() {
-        buildSkeleton(this.container)
-        populateGUI(this.options);
+        var ready = buildSkeleton(this.container)
+        if (ready) populateGUI(this.options);
+    }
+
+    /**
+     * Check GUI for errors in option choices, if
+     * an error exists, display a warning
+     *
+     * @param {obj} guiVals - return from getGUIvals()
+     * @param {obj} unique - return of getAllUnique()
+     *
+     * @return true on error, false on no error
+     */
+    this.guiWarnings = function(guiVals, unique) {
+
+        var setupVals = guiVals[setupTab.replace('#','')];
+        var facetVals = guiVals[facetsTab.replace('#','')];
+        var hVal = facetVals['horizontal-facet'].value
+        var hLabel = facetVals['horizontal-facet'].label
+        var vVal = facetVals['vertical-facet'].value
+        var vLabel = facetVals['vertical-facet'].label
+
+        if (setupVals['x-axis'].label == setupVals['y-axis'].label) { // ensure x & y axis are different
+            displayWarning("The X-axis field cannot be the same as the Y-axis field, please change one of them!", '#warningCol', true);
+            return true;
+        }
+
+        if (hVal || vVal) {
+
+            var facetRows = (hVal) ? unique[hLabel] : [null];
+            var facetCols = (vVal) ? unique[vLabel] : [null];
+
+            if (guiVals.facetCol.value === null && guiVals.facetRow.value === null && guiVals.colWrap.value === null) {
+                displayWarning("In order to use facets, you must at least choose something for <code>Rows</code> or <code>Columns</code>", true);
+                return true;
+            }
+            if (facetRows.length > 50 || facetCols.length > 50) { // limit how many facets can be rendered
+                displayWarning("Cancelling render because too many facets would be created.", true);
+                return true;
+            }
+            if (guiVals.colWrap.value > 0 && guiVals.facetRow.value !== null) {
+                displayWarning("You cannot specify both a <code>Rows</code> and <code>Columns</code> option when specifying <code>Column wrap</code>.", true);
+                return true;
+            }
+            if (guiVals.facetRow.label === guiVals.facetCol.label) {
+                displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", true);
+                return true;
+            }
+        }
+        return false;
     }
 
 
+
+    /**
+     * Call to serializeArray() on the GUI form to return
+     * all the current settings of the GUI. 
+     *
+     * A select option of 'None' will return as null.
+     * A checked checkbox will return as true, otherwise false
+     *
+     * @param {string} sel - selector for form that contains form inputs
+     *
+     * @return {object} - object of tab gui values with each tab ID
+     *   as a key, the value of which are the input values. Inner
+     *   object has input id as the key and values are:
+     *   - for select dropdowns, the value is as object of form
+     *     {label: XX, value: XX}. note that for the 'None' options
+     *     the value will both be null
+     *   - for checkboxes, the value will be true/false
+     *   - for sliders the value will be an array of either length
+     *     1 for a single value slider, or 2 for a min/max slider
+     *
+     */
+    this.getGUIvals = function(sel) {
+
+        var guiVals = {};
+        jQuery(sel + ' div.tab-pane').each(function() {
+            var tab = this.id;
+            guiVals[tab] = {};
+
+            // parse select inputs
+            var tmp = jQuery(this).find(':input').serializeArray();
+
+            tmp.forEach(function(d) {
+                var value = d.value;
+                var name = d.name;
+                guiVals[tab][name] = {}
+                guiVals[tab][name]['value'] = (value == '' || value == "None") ? null : convertToNumber(value);
+                guiVals[tab][name]['label'] = jQuery("#" + name + " option:selected").text();
+            });
+
+            // parse checkboxes
+            var checkBoxes = jQuery(this).find('input[type="checkbox"]');
+            if (checkBoxes.length) {
+                checkBoxes.each(function(d) {
+                    guiVals[tab][this.id] = this.checked;
+                })
+            }
+
+            // parse slider values
+            if (tab in sliderValues) {
+                for (var slider in sliderValues[tab]) {
+                    guiVals[tab][slider] = sliderValues[tab][slider];
+                }
+            }
+        })
+
+
+        return guiVals;
+
+    }
 
 
 
@@ -22,10 +128,11 @@ function gui() {
     // Private Variables
     //------------------------------------------------------------
     var plotTypesID = '#plotTypes',
-        basicsTab = '#plotSetup',
+        setupTab = '#plotSetup',
         facetsTab = '#plotFacets',
         optionsTab = '#plotOptions',
-        filtersTab = '#plotFilter'
+        filtersTab = '#plotFilter',
+        sliderValues = {} // keeps track of all current slider values
 
     $('.nav-tabs a').click(function (e) {
         e.preventDefault()
@@ -125,7 +232,7 @@ function gui() {
         setupPlotFacets();
         setupPlotOptions();
         setupPlotFilters();
-        jQuery(basicsTab).tab('show');
+        jQuery(setupTab).tab('show');
     }
 
 
@@ -144,7 +251,7 @@ function gui() {
                 var cols = getCols(getPlotType(), d);
                 var label = "name" in getAxisSetup(d) ? getAxisSetup(d).name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
-                generateFormSelect(cols, basicsTab, d +"-axis", label, false, domClass);
+                generateFormSelect(cols, setupTab, d +"-axis", label, false, domClass);
             }
         });
     }
@@ -166,7 +273,7 @@ function gui() {
 
             dir.forEach(function(d) {
                 var cols = getCols('ordinal');
-                generateFormSelect(cols, facetsTab, d+'-facet', d);
+                generateFormSelect(cols, facetsTab, d+'-facet', d, {'None':''});
             });
         } else {
             d3.select(facetsTab).style('display','hidden');
@@ -249,6 +356,10 @@ function gui() {
      * - a bootstrap row (#guiRow) that is set as a full width column
      * - a bootstrap row (#warningsRow)
      *
+     * If the globals 'dat' & 'unique' aren't set, tabs won't be generated,
+     * instead a message is displayed with an upload button that calls
+     * uploadData()
+     * 
      * The GUI is further madeup of various sections defined as rows:
      * - #plotSetup: contains all the selects to define the plot type
      *   as well as the axis definitions.
@@ -261,6 +372,9 @@ function gui() {
      * NOTE: by default all the rows are style display:none
      *
      * @param {str} selector - class or id of DOM in which to build GUI
+     *
+     * @return {bool} - true if all data is ready and skeleton has been
+     *   generated; false if data globals (dat & unique) don't exist
      */
     function buildSkeleton(selector) {
 
@@ -279,7 +393,8 @@ function gui() {
             .attr("class","row")
             .attr("id","warningsRow");
         var warningsCol = warningsRow.append("div")
-            .attr("class","col-sm-12");
+            .attr("class","col-sm-12")
+            .attr("id","warningCol");
 
 
         // setup panel
@@ -301,6 +416,25 @@ function gui() {
             .attr('id','guiBody')
             .attr('class','panel-collapse collapse in panel-body')
             .append('form')
+
+        if (!checkIfReady()) {
+            var uploadText = "Looks like you don't have any data loaded, would you like to upload some now?";
+            var row = form.append('div')
+                .attr('class','row')
+                .append('div')
+                .attr('class','col-sm-12')
+
+            row.append('p')
+                .attr('class','lead')
+                .text(uploadText)
+            
+            row.append('button')
+                .attr('class','btn btn-primary')
+                .attr('type','button')
+                .text('Upload')
+                .on('click', uploadData)
+            return false;
+        }
 
         // tabs live here
         form.append('ul')
@@ -324,7 +458,32 @@ function gui() {
             .text('Render')
             .on('click', renderCallback)
 
+        return true;
+    }
 
+
+    /**
+     * onClick event handler for uploading data, called
+     * when users clicks button when globals dat & unique
+     * aren't loaded yet
+     */
+    function uploadData() {
+
+    }
+
+
+    /**
+     * Ensure all global data are set including dat & unique
+     *
+     * Returns true if all data ready; false otherwise
+     */
+    function checkIfReady() {
+
+        if (typeof dat === 'undefined' && typeof unique === 'undefined') {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     /**
@@ -378,7 +537,7 @@ function gui() {
         if (typeof format === 'undefined') format = function(d) { return '[' + d + ']'; };
         if (typeof options === 'undefined' || !options) {
             options = { // default slider if no options provided
-                start:50,
+                start:[50],
                 step: 1,
                 range: {
                     min: 0,
@@ -400,11 +559,33 @@ function gui() {
 
         // generate slider
         noUiSlider.create(slider, options);
+        var tabName = selector.replace('#','');
+        if (!(tabName in sliderValues)) sliderValues[tabName] = {};
+        sliderValues[tabName][id] = options.start; 
 
         // add event listener for slider change
         slider.noUiSlider.on('slide', function(d) {
             jQuery('#' + id + 'Val').text(format(d));
+            sliderValues[id] = d.apply(convertToNumber);
         });
+    }
+
+
+    /**
+     * Convert string to either an int, float
+     * or leave as string
+     *
+     * @param {string} str - input string to convert
+     *
+     * @return - either a float, int or string
+    */
+
+    function convertToNumber(str) {
+
+        var convert = str * 1;
+
+        return (isNaN(convert)) ? str : convert;
+
     }
 
     /**
@@ -501,10 +682,10 @@ function gui() {
                 value = addOption;
                 text = addOption;
             } else {
-                value = Object.keys(addOption)[0];
-                text = Object.keys(addOption)[1];
+                value = Object.values(addOption)[0];
+                text = Object.keys(addOption)[0];
             }
-            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(value);
+            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val($("#" + id + " option:first").val());
         }
 
         return select;
@@ -540,8 +721,8 @@ function gui() {
     function populateGUI(options) {
         if (!options) displayWarning("You must first set the <code>options</code> attribute before building the GUI", false, true);
 
-        addTab(basicsTab, 'Basics', true);
-        generateFormSelect(plotTypes(), basicsTab, plotTypesID.replace('#',''), "Plot type")
+        addTab(setupTab, 'Setup', true);
+        generateFormSelect(plotTypes(), setupTab, plotTypesID.replace('#',''), "Plot type")
         d3.select(plotTypesID).on('change', plotTypeChange);
 
         plotTypeChange(); // fire to select first plot type
@@ -559,9 +740,6 @@ function gui() {
     });
     Object.defineProperty(this,"renderCallback",{
         get: function() { return renderCallback; }, set: function(_) { renderCallback = _; }
-    });
-    Object.defineProperty(this,"onComplete",{
-        get: function() { return onComplete; }, set: function(_) { onComplete = _; }
     });
 
 

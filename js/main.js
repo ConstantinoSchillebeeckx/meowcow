@@ -48,24 +48,21 @@ function preLoad(inputDat, colTypes) {
  * 
  * @return void
 */
-function renderPlot(sel) {
-    console.log('render')
+function renderPlot(gui, sel) {
 
     // clear any previously existent plots/warnings
     jQuery(sel).empty();
     jQuery('#warning').empty();
 
-    return
 
     // get GUI vals
-    var guiVals = getGUIvals('form');
-    var nvd3Types = ['scatter','bar','line'];
-    var distroplotTypes = ['box','violin','bean'];
-
+    var guiVals = gui.getGUIvals('form');
+    console.log(guiVals)
 
     // before rendering anything, let's ensure the selected GUI options make sense to render
-    if (guiWarnings(guiVals, unique)) return;
+    if (gui.guiWarnings(guiVals, unique)) return;
 
+    return
 
     // generate facets and group data
     var facets = setupFacetGrid(sel, guiVals, dat, unique);
@@ -328,6 +325,7 @@ function convertToJSON(dat, colTypes) {
     return convert;
 
 }
+
 
 
 

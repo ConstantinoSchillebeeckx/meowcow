@@ -44,6 +44,7 @@
     <script>
         $(function() {
 
+            // load data
             preLoad(inputDat, colTypes);
 
             // setup GUI
@@ -128,8 +129,7 @@
             var moo = new gui();
             moo.options = setup;
             moo.container = "#guiWrap"
-            moo.renderCallback = function() { renderPlot(); }
-            moo.onComplete = function() { preLoad(inputDat, colTypes); }
+            moo.renderCallback = function() { renderPlot(moo, '#canvas'); }
             moo.init();
 
         });
