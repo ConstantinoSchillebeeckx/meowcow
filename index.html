@@ -29,7 +29,6 @@
         <script src="https://use.fontawesome.com/140d2b5ece.js"></script>
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
         <script src="js/guiSetup.js"></script>
-        <script src="js/gui.js"></script>
         <script src="js/main.js"></script>
 
 
@@ -46,12 +45,11 @@
     <script>
         $(function() {
 
-            preLoad(inputDat, colTypes);
-
             var moo = new gui();
             moo.options = guiSetup;
-            moo.container = "#guiWrap"
-            moo.renderCallback = function() { renderPlot(moo, '#canvas'); }
+            moo.container = "#guiWrap";
+            moo.canvas = '#canvas';
+            moo.data = convertToJSON(inputDat, colTypes);
             moo.init();
 
         });
