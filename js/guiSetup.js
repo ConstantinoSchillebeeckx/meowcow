@@ -79,5 +79,4 @@ var guiSetup = {
             ]
         }
     },
-    colMap: colTypes,
 }

@@ -183,30 +183,21 @@ function gui() {
     };
 
     /**
-     * Return an array of columns (defined as keys in options.colMap)
-     * that match the given column type as defined by the datatypes
-     * in options.colMap or the available data columns as an object
-     * if no type is passed
+     * Return an array of columns in the loaded dataset
+     * that match the given column type as defined by colTypes
      *
      * @param {str} type - [optional] type of columns requested, either interval
      *   (int, float) or ordinal (str, datetime); if not provided, will return
-     *   options.colMap
+     *   colTYpes
      *
      * @return {array/obj} 
      *  - column names that match column type
      *  - obj of available data columns if no type provided
      */
-    var getCols = function(type) { // return colMap keys that match the given type [interval/ordinal]
-        var colMap = options.colMap;
+    var getCols = function(type) { // return colTypes keys that match the given type [interval/ordinal]
         if (typeof type !== 'undefined') {
             var filter = type == 'interval' ? ['int','float'] : ['datetime','str'];
-            return Object.keys(colMap).filter(function(e) { return filter.indexOf(colMap[e].type) != -1  })
-        } else { // remove 'excluded' column types from colMap
-            var tmp = {};
-            for (var key in colMap) {
-                if (colMap[key].type !== 'excluded') tmp[key] = colMap[key];
-            }
-            return tmp;
+            return Object.keys(colTypes).filter(function(e) { return filter.indexOf(colTypes[e].type) != -1  })
         }
     };
 
@@ -734,7 +725,6 @@ function gui() {
      * loads data - used to intialize GUI
      */
     function loadGUI() {
-        jQuery('#guiWrap').remove(); // remove existing one
         var moo = new gui();
         moo.options = guiSetup;
         moo.container = "#guiWrap";
@@ -1098,7 +1088,6 @@ function gui() {
      * Parse GUI options and generate all DOM elements
      */
     function populateGUI(options) {
-        if (!options) displayWarning("You must first set the <code>options</code> attribute before building the GUI", false, true);
 
         addTab(setupTab, 'Setup', true);
         generateFormSelect(plotTypes(), setupTab, plotTypesID.replace('#',''), "Plot type")
