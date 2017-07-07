@@ -306,7 +306,7 @@ function gui() {
                 if (d.type == 'select') {
                     generateFormSelect(d.values, optionsTab, d.accessor, d.label, d.allowEmpty, d.domClass);
                 } else if (d.type == 'toggle') {
-                    generateFormToggle(optionsTab, d.accessor, d.label, d.domClass, d.options); // TODO width of toggle not being calculated - I think it's due to the tabs
+                    generateFormToggle(optionsTab, d.accessor, d.label, d.domClass, d.options); // TODO width of toggle not being calculated - it's due to the tab-pane class I think.
                 } else if (d.type == 'slider') {
                     generateFormSlider(optionsTab, d.accessor, d.label, d.domClass, d.options, d.format);
                 }
@@ -319,7 +319,10 @@ function gui() {
 
 
     /**
-     * // TODO
+     * Will create the appropriate input element used to 
+     * filter the loaded data - the global 'unique' is
+     * required in order to properly set the limits for
+     * each of the filters.
      */
     function setupPlotFilters() {
 
@@ -331,6 +334,28 @@ function gui() {
 
             // add tab and container
             addTab(filtersTab, 'Filters');
+
+            // add filter notes
+            var note = '<span class="label label-default">NOTE</span> ';
+            note += 'each additional filter is combined as an <code>and</code> boolean operation.';
+            d3.select(filtersTab).append('div')
+                .attr('class','form-group col-sm-10')
+                .style('margin-bottom',0)
+                .append('p')
+                .html(note)
+
+            // filter reset button
+            d3.select(filtersTab)
+                .append('div')
+                .attr('class','form-group col-sm-2')
+                .style('margin-bottom',0)
+                .append('button')
+                .attr('id','resetBtn')
+                .attr('class','btn btn-warning btn-xs pull-right')
+                .attr('disabled','disabled')
+                .style('display','none')
+                .on('click', resetFilters)
+                .text('Reset filters');
 
             var colMap = getCols();
 
@@ -363,17 +388,6 @@ function gui() {
                 }
             }
     
-            // filter reset button
-            d3.select(filtersTab)
-                .append('div')
-                .attr('class','form-group col-sm-4')
-                .append('button')
-                .attr('id','resetBtn')
-                .attr('class','btn btn-warning btn-xs') // TODO weird alignment, should be all the way left
-                .attr('disabled','disabled')
-                .style('display','none')
-                .on('click', resetFilters)
-                .text('Reset');
 
         }
     }
@@ -523,7 +537,7 @@ function gui() {
             .attr('type','button')
             .text('Render')
             .attr('id','renderBtn')
-            .on('click', renderCallback)
+            .on('click', renderCallback);
 
         return true;
     }
@@ -536,8 +550,84 @@ function gui() {
      */
     function uploadData() {
         // TODO
+        showModal();
+
         return false;
     }
+
+
+
+    function showModal() {
+
+        var modal = d3.select('body').append('div')
+            .attr('class','modal fade')
+            .attr('tabindex',-1)
+            .attr('role','dialog')
+            .attr('id','uploadModal')
+            .append('div')
+            .attr('class','modal-dialog')
+            .attr('role','document')
+            .append('div')
+            .attr('class','modal-content')
+
+        var modalHeader = modal.append('div')
+            .attr('class','modal-header')
+            
+        modalHeader.append('button')
+            .attr('type','button')
+            .attr('class','close')
+            .attr('data-dismiss','modal')
+            .attr('aria-label','Close')
+            .append('span')
+            .attr('area-hidden',true)
+            .html('&times')
+
+        modalHeader.append('h4')
+            .attr('class','modal-title')
+            .text('Modal title')
+
+        var modalBody = modal.append('div')
+            .attr('class','modal-body')
+            .append('p')
+            .text('asdfasdf')
+
+        var modalFooter = modal.append('div')
+            .attr('class','modal-footer')
+
+        modalFooter.append('button')
+            .attr('type','button')
+            .attr('class','btn btn-default')
+            .attr('data-dismiss','modal')
+            .text('Close');
+
+        modalFooter.append('button')
+            .attr('type','button')
+            .attr('class','btn btn-primary')
+            .text('Save');
+
+        jQuery('#uploadModal').modal().show();
+            
+/*
+<div class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Modal title</h4>
+      </div>
+      <div class="modal-body">
+        <p>One fine body&hellip;</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Save changes</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+*/
+    }
+
 
 
     /**
