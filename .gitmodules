@@ -16,3 +16,6 @@
 [submodule "lib/nvd3"]
 	path = lib/nvd3
 	url = git@github.com:ConstantinoSchillebeeckx/nvd3.git
+[submodule "lib/PapaParse"]
+	path = lib/PapaParse
+	url = https://github.com/mholt/PapaParse.git

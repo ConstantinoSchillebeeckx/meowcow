@@ -1,3 +1,4 @@
+var dat, unique;
 /**
  * Preload all globals and setup variables
  * so that the GUI can be drawn.
@@ -18,15 +19,12 @@ function preLoad(inputDat, colTypes) {
         return;
     }
 
-    // GLOBAL!
     // - dat: input data loaded from js/tall.js
     // - colsTypes: input object loaded from js/tall.js with datatable fields as keys and SQL column type as values
     dat = convertToJSON(inputDat, colTypes);
     unique = getAllUnique(dat, colTypes);
 
 }
-
-
 
 
 

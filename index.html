@@ -25,6 +25,8 @@
         <script src="lib/nvd3/build/nv.d3.js"></script>
         <script src="lib/bootstrap-toggle/js/bootstrap-toggle.min.js"></script>
         <script src="lib/noUiSlider/distribute/nouislider.min.js"></script>
+        <script src="lib/PapaParse/papaparse.min.js"></script>
+        <script src="https://use.fontawesome.com/140d2b5ece.js"></script>
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
         <script src="js/guiSetup.js"></script>
         <script src="js/gui.js"></script>
@@ -44,8 +46,7 @@
     <script>
         $(function() {
 
-            // load data
-            //preLoad(inputDat, colTypes);
+            preLoad(inputDat, colTypes);
 
             var moo = new gui();
             moo.options = guiSetup;

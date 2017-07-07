@@ -8,6 +8,9 @@ function gui() {
         container = false,
         renderCallback = false // to be called by "Render button"
 
+    /**
+     * TODO
+     */
     this.init = function() {
         var ready = buildSkeleton(this.container)
         if (ready) populateGUI(this.options);
@@ -498,21 +501,7 @@ function gui() {
             .append('form')
 
         if (!checkIfReady()) {
-            var uploadText = "Looks like you don't have any data loaded, would you like to upload some now?";
-            var row = form.append('div')
-                .attr('class','row')
-                .append('div')
-                .attr('class','col-sm-12')
-
-            row.append('p')
-                .attr('class','lead')
-                .text(uploadText)
-            
-            row.append('button')
-                .attr('class','btn btn-primary')
-                .attr('type','button')
-                .text('Upload')
-                .on('click', uploadData)
+            showModal();
             return false;
         }
 
@@ -544,88 +533,271 @@ function gui() {
 
 
     /**
-     * onClick event handler for uploading data, called
-     * when users clicks button when globals dat & unique
-     * aren't loaded yet
+     * When a user uploads a file, this function will
+     * inpsect the parsed data and determine the data
+     * type for each column as 'int','float','str' or
+     * 'datetime'
+     *
+     * @param {array} parsedDat - parsed data from PapaParse
+     *   library; each array element is an object with column
+     *   names as keys, and cell value as value
+     *
+     * @return {obj} - each key is a column name, each value
+     *   is the column data type (int,float,str,datetime)
      */
-    function uploadData() {
-        // TODO
-        showModal();
+    function findColumnTypes(parsedDat) {
+        var colMap = {};
 
-        return false;
+        // init with first row vals
+        var colNames = Object.keys(parsedDat[0]); // column names
+        var colVals = Object.values(parsedDat[0]); // row 1 values
+        colNames.forEach(function(d,i) {
+            colMap[d] = getDatType(colVals[i]);
+        })
+    
+        // check each row for the data type
+        // we only update things if the data
+        // type 'trumps' the first row
+        // 'trump' order is int, float, datetime,
+        // str meaning a float type will convert trump
+        // an int
+        var trump = {'int':0, 'float':1, 'datetime': 2, 'str':3}
+        parsedDat.forEach(function(d) {
+            var rowVal = Object.values(d);
+
+            colNames.forEach(function(col,i) {
+                var currentType = colMap[col];
+                if (currentType === 'str') return;
+                var valType = getDatType(rowVal[i]);
+                if (valType !== currentType) { // if type is different than currently stored
+                    if (valType == 'datetime' || valType == 'str') {
+                        // if previously a number (int or float) and changing to either datetime or str, make it a str
+                        colMap[col] = 'str';
+                    } else if (trump[valType] > trump[currentType]) { 
+                        colMap[col] = valType;
+                    } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
+                        // if previously a datetime, and we get anything else, convert to str
+                        colMap[col] = 'str';
+                    }
+                }
+            });
+        });
+
+        return colMap;
+    }
+
+    /**
+     * Return type of datum, one of either
+     * int, float, str, or datetime.
+     */
+    function getDatType(mixedVar) {
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && isDateTime(mixedVar)) return 'datetime';
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDateTime(mixedVar) && isStr(mixedVar)) return 'str';
+        if (isInt(mixedVar) && !isFloat(mixedVar) && !isStr(mixedVar)) return 'int';
+        if (!isInt(mixedVar) && isFloat(mixedVar) && !isStr(mixedVar)) return 'float';
+    }
+
+    // return true if val is an interger
+    function isInt(val) {
+        return val === +val && isFinite(val) && !(val % 1); // http://locutus.io/php/var/is_int/
+    }
+    // return true if val is a float
+    function isFloat(val) {
+        return +val === val && (!isFinite(val) || !!(val % 1)); // http://locutus.io/php/var/is_float/
+    }
+    // return true if val is a str
+    function isStr(val) {
+        return isNaN(val)
+    }
+    // return true if val is a datetime str
+    function isDateTime(val) {
+        return !isNaN(Date.parse(val))
     }
 
 
 
+    /**
+     * onClick event handler for uploading data, called
+     * when users selects a file to upload from the
+     * upload modal. Function will parse the user provided
+     * file and setup the proper globals 'dat' & 'unique'
+     */
+    function uploadData() {
+
+        // parse file
+        $('input[type=file]').parse({
+            config: {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results, file) {
+                    dat = results.data; // 'dat' declared by main.js
+                    var meta = results.meta;
+                    var errors = results.errors;
+
+                    // clear modal body
+                    var modalBody = d3.select('#modalBody')
+                    modalBody.html('');
+                    jQuery('#uploadDone').remove();
+
+                    if (errors.length) { // if there was an error
+                      
+                        jQuery('.modal-content').addClass('panel-danger');
+
+ 
+                        // just grab first error for now
+                        var errorText = '<span class="text-danger fa fa-exclamation " aria-hidden="true"></span> ' + errors[0].message;
+                        if (typeof errors[0].row !== 'undefined') errorText += " - error found in row " + errors[0].row;
+                        modalBody.append('h4')
+                            .attr('class','lead')
+                            .html(errorText)
+                    } else {
+
+                        jQuery('.modal-content').removeClass('panel-danger').addClass('panel-info');
+                        var colTypes = findColumnTypes(dat);
+                        unique = getAllUnique(dat, colTypes) // 'unique' declared by main.js
+
+                        // show user parsed results
+                        modalBody.append('h4')
+                            .attr('class','lead')
+                            .text('Data loaded successfully!')
+                        modalBody.append('p')
+                            .text('The following columns were found with the given column types:')
+
+                        modalBody.append('ul')
+                            .selectAll('li')
+                            .data(Object.keys(colTypes))
+                            .enter()
+                            .append('li')
+                            .html(function(d, i) { return d + ' - <code>' + Object.values(colTypes)[i] + '</code>'; });
+
+                        modalBody.append('p')
+                            .text('If this is incorrect, please change your data and upload again.');
+
+                        // add 'done' button
+                        d3.select('.modal-footer')
+                            .append('button')
+                            .attr('type','button')
+                            .attr('class','btn btn-success')
+                            .attr('data-dismiss','modal')
+                            .attr('id','uploadDone')
+                            .text('Done')
+                            .on('click', loadGUI);
+                    }
+                }
+            },
+            before: function(file, inputElem) {
+                // show spinner
+                var modalBody = d3.select('#modalBody')
+                modalBody.html(''); // clear content
+
+                // ensure proper file type
+                var allowFileType = ['csv','txt','tsv'];
+                var tmp = file.name.split('.');
+                var extension = tmp[tmp.length - 1];
+                if (allowFileType.indexOf(extension) == -1 || ["text/plain","text/csv"].indexOf(file.type) == -1) {
+
+                    jQuery('.modal-content').addClass('panel-danger');
+
+                    var errorText = '<span class="text-danger fa fa-exclamation " aria-hidden="true"></span> ';
+                    errorText += 'File must be plain text have one of the following extensions: ' + allowFileType.join(", ");
+                    modalBody.append('h4')
+                        .attr('class','lead')
+                        .html(errorText)
+
+                    return {action: "abort"};
+
+                } else { // no errors loading file, proceed
+
+                    modalBody.append('i')
+                        .attr('class','fa fa-spinner fa-pulse fa-2x fa-fw');
+                    modalBody.append('span')
+                        .text('Loading...');
+
+                    return {action: "continue"};
+                }
+            },
+        });
+        
+    }
+
+    /**
+     * Helper function called after user properly
+     * loads data - used to intialize GUI
+     */
+    function loadGUI() {
+        jQuery('#guiWrap').remove(); // remove existing one
+        var moo = new gui();
+        moo.options = guiSetup;
+        moo.container = "#mooWrap"
+        moo.renderCallback = function() { renderPlot(moo, '#canvas'); }
+        moo.init();
+    }
+
+
+    /**
+     * Automatically called if data isn't yet loaded
+     */
     function showModal() {
 
-        var modal = d3.select('body').append('div')
-            .attr('class','modal fade')
-            .attr('tabindex',-1)
-            .attr('role','dialog')
-            .attr('id','uploadModal')
-            .append('div')
-            .attr('class','modal-dialog')
-            .attr('role','document')
-            .append('div')
-            .attr('class','modal-content')
+        // if modal doesn't already exist, create it
+        if (jQuery('#uploadModal').length === 0) {
+        
+            var modal = d3.select('body').append('div')
+                .attr('class','modal fade')
+                .attr('tabindex',-1)
+                .attr('role','dialog')
+                .attr('id','uploadModal')
+                .append('div')
+                .attr('class','modal-dialog')
+                .attr('role','document')
+                .append('div')
+                .attr('class','modal-content panel-info')
 
-        var modalHeader = modal.append('div')
-            .attr('class','modal-header')
+            var modalHeader = modal.append('div')
+                .attr('class','modal-header panel-heading')
+                
+            modalHeader.append('button')
+                .attr('type','button')
+                .attr('class','close')
+                .attr('data-dismiss','modal')
+                .attr('aria-label','Close')
+                .append('span')
+                .attr('area-hidden',true)
+                .html('&times')
+
+            modalHeader.append('h4')
+                .attr('class','modal-title')
+                .text('Load data')
+
+            var modalBody = modal.append('div')
+                .attr('class','modal-body')
+                
+            var text = "Looks like you don't have any data loaded, please upload some.";
+            modalBody.append('div')
+                .attr('class','row')
+                .append('div')
+                .attr('class','col-sm-12')
+                .attr('id','modalBody')
+                .append('h4')
+                .attr('class','lead')
+                .text(text)
+
+            var modalFooter = modal.append('div')
+                .attr('class','modal-footer')
+
+
+            modalFooter.append('label')
+                .attr('class','btn btn-primary btn-file')
+                .text('Upload')
+                .append('input')
+                .attr('type','file')
+                .style('display','none')
+                .on('change',uploadData)
+
+            jQuery('#uploadModal').modal().show();
+        }
             
-        modalHeader.append('button')
-            .attr('type','button')
-            .attr('class','close')
-            .attr('data-dismiss','modal')
-            .attr('aria-label','Close')
-            .append('span')
-            .attr('area-hidden',true)
-            .html('&times')
-
-        modalHeader.append('h4')
-            .attr('class','modal-title')
-            .text('Modal title')
-
-        var modalBody = modal.append('div')
-            .attr('class','modal-body')
-            .append('p')
-            .text('asdfasdf')
-
-        var modalFooter = modal.append('div')
-            .attr('class','modal-footer')
-
-        modalFooter.append('button')
-            .attr('type','button')
-            .attr('class','btn btn-default')
-            .attr('data-dismiss','modal')
-            .text('Close');
-
-        modalFooter.append('button')
-            .attr('type','button')
-            .attr('class','btn btn-primary')
-            .text('Save');
-
-        jQuery('#uploadModal').modal().show();
-            
-/*
-<div class="modal fade" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title">Modal title</h4>
-      </div>
-      <div class="modal-body">
-        <p>One fine body&hellip;</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary">Save changes</button>
-      </div>
-    </div><!-- /.modal-content -->
-  </div><!-- /.modal-dialog -->
-</div><!-- /.modal -->
-*/
     }
 
 
