@@ -319,11 +319,15 @@ function gui() {
 
 
     /**
-     *
+     * // TODO
      */
     function setupPlotFilters() {
 
-        if (typeof unique !== 'undefined') { // unique is a global set with preLoad()
+        var slider, select;
+
+        // unique is a global set with preLoad()
+        // it is required in order to set all the filter limits
+        if (typeof unique !== 'undefined') {
 
             // add tab and container
             addTab(filtersTab, 'Filters');
@@ -350,13 +354,65 @@ function gui() {
                     } else if (colType == 'float') {
                         format = colMap[col].format ? colMap[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + paraseFloat(d[1]).toFixed(2) + ']'; };
                     }
-                    generateFormSlider(filtersTab, col+'Filter', col, false, sliderOptions, format);
+                    slider = generateFormSlider(filtersTab, col+'Filter', col, 'col-sm-4 filterInput', sliderOptions, format);
+                    slider.noUiSlider.on('start',function() { showResetButton() }); // activate reset button
                 } else if (colType == 'str') {
-                    generateFormSelect(colVals, filtersTab, col+'Filter', col, 'All'); // TODO this will potentially generate a select with a ton of options ...
+                    select = generateFormSelect(colVals, filtersTab, col+'Filter', col, 'All', 'col-sm-4 filterInput'); // TODO this will potentially generate a select with a ton of options ...
+                    select.on('input',function() { showResetButton() }); // activate reset button
                 } else if (colType == 'datetime') {
                 }
             }
+    
+            // filter reset button
+            d3.select(filtersTab)
+                .append('div')
+                .attr('class','form-group col-sm-4')
+                .append('button')
+                .attr('id','resetBtn')
+                .attr('class','btn btn-warning btn-xs') // TODO weird alignment, should be all the way left
+                .attr('disabled','disabled')
+                .style('display','none')
+                .on('click', resetFilters)
+                .text('Reset');
+
         }
+    }
+
+    /**
+     * remove read-only from reset button and show it
+     */
+    function showResetButton() {
+        jQuery('#resetBtn').attr('disabled',false)
+            .show();
+    }
+
+
+    /**
+     * on click event handler to reset all filters to 'default'
+     * values - in this case default means the first option
+     * for a select, and min/max values for sliders.
+     */
+    function resetFilters() {
+
+        // reset sliders
+        for (var col in getCols()) {
+            var colType = getColType(col);
+            if (colType == 'int' || colType == 'float') {
+
+                var slider = d3.select('#'+col+'FilterSliderWrap').node()
+                var colVals = d3.extent(unique[col]);
+                slider.noUiSlider.set(colVals);
+            }
+        }
+
+        // reset all select to first option
+        jQuery(filtersTab + ' select').prop("selectedIndex", 0);
+
+        // reset button to read only and hide
+        d3.select('#resetBtn')
+            .attr('disabled','disabled')
+            .style('display','none');
+        return false;
     }
 
     /** 
@@ -542,6 +598,8 @@ function gui() {
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
      * @param {obj} options - toggle options, see http://www.bootstraptoggle.com/ API
      * @param {funct} format - function to format slider value; defaults to "[val]"
+     *
+     * @return slider (node) on which one can attach events
      */
     function generateFormSlider(selector, id, label, domClass, options, format) {
 
@@ -566,7 +624,7 @@ function gui() {
             .text(format(options.start));
 
         var slider = formGroup.append('div')
-            .attr('id','sliderWrap')
+            .attr('id',id+'SliderWrap')
             .node()
 
         // generate slider
@@ -581,6 +639,8 @@ function gui() {
             var tabName = jQuery('#' + id + 'Val').closest('.tab-pane').attr('id');
             sliderValues[tabName][id] = d.map(function(e) { return convertToNumber(e); });
         });
+
+        return slider;
     }
 
 
@@ -720,7 +780,7 @@ function gui() {
                 value = Object.values(addOption)[0];
                 text = Object.keys(addOption)[0];
             }
-            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val($("#" + id + " option:first").val());
+            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + id + " option:first").val());
         }
 
         return select;
