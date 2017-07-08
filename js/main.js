@@ -15,7 +15,9 @@ function gui() {
     var options = false,
         container = false,
         canvas = false,
-        data = false
+        data = false,
+        ignoreCol = [],
+        colTypes
 
     /**
      * TODO
@@ -23,10 +25,11 @@ function gui() {
     this.init = function() {
 
         if (checkIfReady()) {
-            buildSkeleton(this.container)
-            colTypes = findColumnTypes(data);
-            unique = getAllUnique(this.data, colTypes);
-            populateGUI(this.options);
+            buildSkeleton(container)
+            colTypes = findColumnTypes(data, ignoreCol, colTypes);
+            unique = getAllUnique(data, colTypes);
+            console.log(colTypes, unique)
+            populateGUI(options);
         }
     }
 
@@ -184,9 +187,9 @@ function gui() {
 
     /**
      * Return an array of columns in the loaded dataset
-     * that match the given column type as defined by colTypes
+     * that match the requested data type
      *
-     * @param {str} type - [optional] type of columns requested, either interval
+     * @param {str} type - type of columns requested, either interval
      *   (int, float) or ordinal (str, datetime); if not provided, will return
      *   colTYpes
      *
@@ -197,13 +200,9 @@ function gui() {
     var getCols = function(type) { // return colTypes keys that match the given type [interval/ordinal]
         if (typeof type !== 'undefined') {
             var filter = type == 'interval' ? ['int','float'] : ['datetime','str'];
-            return Object.keys(colTypes).filter(function(e) { return filter.indexOf(colTypes[e].type) != -1  })
+            return Object.keys(colTypes).filter(function(e) { return filter.indexOf(colTypes[e]) != -1  })
         }
     };
-
-    var getColType = function(col) {
-        return options.colMap[col].type
-    }
 
     var getAxisSetup = function(axis) {
         return getPlotSettings().setup[axis];
@@ -365,10 +364,8 @@ function gui() {
                 .on('click', resetFilters)
                 .text('Reset filters');
 
-            var colMap = getCols();
-
-            for (var col in colMap) {
-                var colType = getColType(col);
+            for (var col in colTypes) {
+                var colType = colTypes[col]
                 var colVals = unique[col];
                 if (colType == 'int' || colType == 'float') {
                     colVals = d3.extent(unique[col]);
@@ -383,9 +380,9 @@ function gui() {
 
                     var format;
                     if (colType == 'int') {
-                        format = colMap[col].format ? colMap[col].format : function(d) { return '[' + parseInt(d[0]) + ',' + parseInt(d[1]) + ']' };
+                        format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseInt(d[0]) + ',' + parseInt(d[1]) + ']' };
                     } else if (colType == 'float') {
-                        format = colMap[col].format ? colMap[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + paraseFloat(d[1]).toFixed(2) + ']'; };
+                        format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + parseFloat(d[1]).toFixed(2) + ']'; };
                     }
                     slider = generateFormSlider(filtersTab, col+'Filter', col, 'col-sm-4 filterInput', sliderOptions, format);
                     slider.noUiSlider.on('start',function() { showResetButton() }); // activate reset button
@@ -414,11 +411,11 @@ function gui() {
      * values - in this case default means the first option
      * for a select, and min/max values for sliders.
      */
-    function resetFilters() {
+    function resetFilters() { // TODO - sliders don't reset on iOS
 
         // reset sliders
         for (var col in getCols()) {
-            var colType = getColType(col);
+            var colType = colTypes[col];
             if (colType == 'int' || colType == 'float') {
 
                 var slider = d3.select('#'+col+'FilterSliderWrap').node()
@@ -539,19 +536,33 @@ function gui() {
      * @param {array} parsedDat - parsed data from PapaParse
      *   library; each array element is an object with column
      *   names as keys, and cell value as value
+     * @param {array, optional} ignreCol - list of column names to ignore
+     *   from output object; this is how a user can ignore columns
+     *   present in their data.
+     * @param colTypes {obj, optional} - same format as the output of this
+     *   function; allows user to manually overwrite a column type. e.g.
+     *   if all subjects are identified with a numeric ID, but user still
+     *   wants to treat this as a str.
      *
      * @return {obj} - each key is a column name, each value
      *   is the column data type (int,float,str,datetime)
      */
-    function findColumnTypes(parsedDat) {
+    function findColumnTypes(parsedDat, ignoreCol, colTypes) {
         var colMap = {};
+
+        // add colTypes keys (column names) to the ignore list
+        // we will manually add them in before the return
+        if (colTypes) ignoreCol.concat(Object.keys(colTypes));
 
         // init with first row vals
         var colNames = Object.keys(parsedDat[0]); // column names
         var colVals = Object.values(parsedDat[0]); // row 1 values
         colNames.forEach(function(d,i) {
-            colMap[d] = getDatType(colVals[i]);
+            if (ignoreCol.indexOf(d) == -1) colMap[d] = getDatType(colVals[i]);
         })
+
+        
+
     
         // check each row for the data type
         // we only update things if the data
@@ -564,22 +575,31 @@ function gui() {
             var rowVal = Object.values(d);
 
             colNames.forEach(function(col,i) {
-                var currentType = colMap[col];
-                if (currentType === 'str') return;
-                var valType = getDatType(rowVal[i]);
-                if (valType !== currentType) { // if type is different than currently stored
-                    if (valType == 'datetime' || valType == 'str') {
-                        // if previously a number (int or float) and changing to either datetime or str, make it a str
-                        colMap[col] = 'str';
-                    } else if (trump[valType] > trump[currentType]) { 
-                        colMap[col] = valType;
-                    } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
-                        // if previously a datetime, and we get anything else, convert to str
-                        colMap[col] = 'str';
+                if (ignoreCol.indexOf(col) == -1 ) {
+                    var currentType = colMap[col];
+                    if (currentType === 'str') return;
+                    var valType = getDatType(rowVal[i]);
+                    if (valType !== currentType) { // if type is different than currently stored
+                        if (valType == 'datetime' || valType == 'str') {
+                            // if previously a number (int or float) and changing to either datetime or str, make it a str
+                            colMap[col] = 'str';
+                        } else if (trump[valType] > trump[currentType]) { 
+                            colMap[col] = valType;
+                        } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
+                            // if previously a datetime, and we get anything else, convert to str
+                            colMap[col] = 'str';
+                        }
                     }
                 }
             });
         });
+
+        // manually add in user specified column type
+        if (colTypes) {
+            Object.keys(colTypes).forEach(function(d,i) {
+                colMap[d] = Object.values(colTypes)[i];
+            })
+        }
 
         return colMap;
     }
@@ -652,7 +672,7 @@ function gui() {
                     } else {
 
                         jQuery('.modal-content').removeClass('panel-danger').addClass('panel-info');
-                        var colTypes = findColumnTypes(data);
+                        var colTypes = findColumnTypes(data, ignoreCol);
                         unique = getAllUnique(data, colTypes)
 
                         // show user parsed results
@@ -1322,7 +1342,9 @@ function gui() {
 
 
     /**
-     * Get all unique values for each of the columns provided by the datatable
+     * Get all unique values for each of the columns provided by the datatable.
+     *
+     * Note that only data for those columns defined in colTypes will be returned
      *
      * @param {array} dat - Return of convertToJSON. An array of objects where the object key is the column header
      *                and the value is the column value.
@@ -1333,19 +1355,19 @@ function gui() {
 
     function getAllUnique(dat, colTypes) {
 
-        var keys = Object.keys(dat[0]); // list of columns for datatable
+        var colNames = Object.keys(colTypes); // list of columns for datatable
         var vals = {};
 
         function sortNumber(a,b) {
             return a - b;
         }
 
-        keys.forEach(function(key) {
-            var colType = colTypes[key].type
+        colNames.forEach(function(colName) {
+            var colType = colTypes[colName]
             if (colType !== 'excluded') {
-                var unique = [...new Set(dat.map(item => item[key]))].sort(); // http://stackoverflow.com/a/35092559/1153897
+                var unique = [...new Set(dat.map(item => item[colName]))].sort(); // http://stackoverflow.com/a/35092559/1153897
                 if (colType == 'int' || colType == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
-                vals[key] = unique.map(function(d) { return d });
+                vals[colName] = unique.map(function(d) { return d });
             }
         })
 
@@ -1495,6 +1517,9 @@ function gui() {
     });
     Object.defineProperty(this,"data",{
         get: function() { return data; }, set: function(_) { data = _; }
+    });
+    Object.defineProperty(this,"ignoreCol",{ // array of column names to ignore in given data
+        get: function() { return ignoreCol; }, set: function(_) { ignoreCol = _; }
     });
 
 

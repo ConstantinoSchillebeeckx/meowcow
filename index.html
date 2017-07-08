@@ -49,7 +49,9 @@
             moo.options = guiSetup;
             moo.container = "#guiWrap";
             moo.canvas = '#canvas';
-            //moo.data = convertToJSON(inputDat, colTypes);
+            moo.data = convertToJSON(inputDat, colTypes);
+            moo.ignoreCol = ['_UID'];
+            moo.colTypes = {Subject: 'str'},
             moo.init();
 
         });
