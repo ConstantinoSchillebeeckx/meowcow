@@ -6,7 +6,7 @@ var guiSetup = {
             allowFacets: true,
             //parseData: function(d) { return d.map(function(e) { return e.Study }); },
             parseData: false,
-            setup: {
+            setup: { // this will populate the 'Setup' tab
                 x: {
                     type: 'ordinal',
                     accessor: 'x',
@@ -20,12 +20,17 @@ var guiSetup = {
                     type: 'ordinal',
                 },
             },
-            options: [
+            options: [ // this will populate the 'Options' tab
                 {
                     accessor: 'plotType', // this will also set the select ID
                     label: 'Style',
                     type: 'select',
-                    values: ['box','violin']
+                    values: {Box: 'box', Violin: 'violin', Scatter: false} // can also just be an array
+                },{
+                    accessor: 'whiskerDef',
+                    label: 'Whisker definition',
+                    type: 'select',
+                    values: ['iqr','minmax','stddev']
                 },{
                     accessor: 'notchBox',
                     label: 'Notch boxes',
@@ -35,48 +40,71 @@ var guiSetup = {
                         off: 'Disabled',
                         width: 90,
                     }
+                },{
+                    accessor: 'hideWhiskers',
+                    label: 'Hide whiskers',
+                    type: 'toggle',
+                    options: {
+                        on: 'Yes',
+                        off: 'No',
+                    },
+                    class: 'col-sm-2',
+                }, {
+                    accessor: 'squash',
+                    label: 'Squash',
+                    type: 'toggle',
+                    options: {
+                        on: 'Yes',
+                        off: 'No',
+                    },
+                    class: 'col-sm-2',
+                }, {
+                    accessor: 'showOnlyOutliers',
+                    label: 'Show only outliers',
+                    type: 'toggle',
+                    options: {
+                        on: 'Yes',
+                        off: 'No',
+                    },
+                    set: true, // TODO toggles default to off, this sets toggle to on
+                    class: 'col-sm-2',
+                }, {
+                    accessor: 'bandwidth',
+                    label: 'KDE bandwidth',
+                    type: 'text',
+                    required: false,
+                    help: "heuristic for kde bandwidth calculation, can be float or str, if str, must be one of 'scott' or 'silverman' [default 'scott']" // TODO
+                }, {
+                    accessor: 'resolution',
+                    label: 'KDE resolution',
+                    type: 'slider',
+                    options: {start: 50, range: {'min':0, 'max':100}, step:1, connect: [true, false]},
+                    format: function(d) { return '[' + parseInt(d) + ']' }
+                }, {
+                    accessor: 'showMiddle',
+                    label: 'Middle line',
+                    type: 'select',
+                    values: {Mean: 'mean', Median: 'median', None: false}
                 }, {
                     accessor: 'jitter',
                     label: 'Point jitter',
                     type: 'slider',
-                    options: {start: 0.7, range: {'min':0, 'max':1}, step:0.1},
+                    options: {start: 0.7, range: {'min':0, 'max':1}, step:0.1, connect: [true, false]},
                     format: function(d) { return '[' + parseFloat(d).toFixed(1) + ']' }
+                }, {
+                    accessor: 'maxBoxWidth',
+                    label: 'Max box width',
+                    type: 'slider',
+                    options: {start: 0, range: {'min':0, 'max':50}, step:1, connect: [true, false],},
+                    format: function(d) { return '[' + parseInt(d) + ']' },
+                }, {
+                    accessor: 'observationRadius',
+                    label: 'Observation radius',
+                    type: 'slider',
+                    options: {start: 3, range: {'min':0, 'max':50}, step:1, connect: [true, false],},
+                    format: function(d) { return '[' + parseInt(d) + ']' },
                 }
             ]
         },
-        scatter: {
-            label: 'scatter plot',
-            allowFacets: false,
-            setup: {
-                x: {
-                    type: 'interval'
-                },
-                y : {
-                    type: 'interval'
-                },
-                z : {
-                    name: 'Color group',
-                    type: 'ordinal'
-                },
-            },
-            options: [
-                {
-                    name: 'plotType',
-                    label: 'Style',
-                    type: 'select',
-                    values: ['box','violin']
-                },{
-                    name: 'moo',
-                    type: 'toggle',
-                    options: {
-                        on: 'Enabled',
-                        off: 'Disabled'
-                    }
-                }, {
-                    name: 'meow',
-                    type: 'slider',
-                }
-            ]
-        }
     },
 }

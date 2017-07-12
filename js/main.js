@@ -46,10 +46,6 @@ function gui() {
         unique = false,
         colTypes = false
 
-    $('.nav-tabs a').click(function (e) {
-        e.preventDefault()
-        jQuery(this).tab('show')
-    })
 
     /**
      * Check GUI for errors in option choices, if
@@ -173,14 +169,16 @@ function gui() {
     var getPlotType = function() { return jQuery(plotTypesID).val(); }
 
     /**
-     * Return an obj of plotTypes available in the specified options
-     * keys will be the plot type label, and values will be the name
+     * Return an obj of plotTypes available in the specified options.
+     * obj keys will be the plot type select value,
+     * obj values will be the select label
      */
     var plotTypes = function() { 
         var tmp = {}; 
-        for (var d in options.plotTypes) {
-            var dat = options.plotTypes[d];
-            tmp[d] = 'label' in dat ? dat.label : dat.name;
+        for (var value in options.plotTypes) {
+            var dat = options.plotTypes[value];
+            var key = 'label' in dat ? dat.label : dat.name;
+            tmp[key] = value;
         }
         return tmp;
     };
@@ -248,7 +246,7 @@ function gui() {
         setupPlotFacets();
         setupPlotOptions();
         setupPlotFilters();
-        jQuery(setupTab).tab('show');
+        jQuery(setupTab + 'Tab a').tab('show'); // show setup tab
     }
 
 
@@ -267,7 +265,8 @@ function gui() {
                 var cols = getCols(axisSetup.type);
                 var label = "name" in axisSetup ? axisSetup.name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
-                generateFormSelect(cols, setupTab, d +"-axis", label, (d=='z') ? {'None':null} : false, domClass);
+                var addOption = d == 'z' ? {'None':null} : false;
+                generateFormSelect(cols, setupTab, d +"-axis", label, domClass, addOption);
             }
         });
     }
@@ -289,7 +288,7 @@ function gui() {
 
             dir.forEach(function(d) {
                 var cols = getCols('ordinal');
-                generateFormSelect(cols, facetsTab, d+'-facet', (d == 'horizontal') ? 'Columns' : 'Rows', {'None':''});
+                generateFormSelect(cols, facetsTab, d+'-facet', (d == 'horizontal') ? 'Columns' : 'Rows', undefined, {'None':''});
             });
 
             generateFormTextInput(facetsTab, 'colWrap', 'Column wrap', false, 'number');
@@ -310,19 +309,79 @@ function gui() {
             // add tab and container
             addTab(optionsTab, 'Options');
 
+            var colWidthCount = 0; // count bootstrap col width
+
             plotOptions.forEach(function(d) {
+
                 if (d.type == 'select') {
-                    generateFormSelect(d.values, optionsTab, d.accessor, d.label, d.allowEmpty, d.domClass);
+                    generateFormSelect(d.values, optionsTab, d.accessor, d.label, d.class);
                 } else if (d.type == 'toggle') {
-                    generateFormToggle(optionsTab, d.accessor, d.label, d.domClass, d.options); // TODO width of toggle not being calculated - it's due to the tab-pane class I think.
+                    generateFormToggle(optionsTab, d.accessor, d.label, d.class, d.options); // TODO width of toggle not being calculated - it's due to the tab-pane class I think.
                 } else if (d.type == 'slider') {
-                    generateFormSlider(optionsTab, d.accessor, d.label, d.domClass, d.options, d.format);
+                    generateFormSlider(optionsTab, d.accessor, d.label, d.class, d.options, d.format);
+                } else if (d.type == 'text' || d.type == 'number') {
+                    generateFormInput(d.type, d.required, optionsTab, d.accessor, d.label, d.class)
                 }
+
             })
+
 
         } else {
             d3.select(optionsTab).style('display','hidden');
         }
+
+        addClearFix(optionsTab);
+    }
+
+    /**
+     * Add clearfix so that columns wrap properly
+     *
+     * @param {str} - tab ID selector name
+     *
+     * @return void
+     */
+    function addClearFix(selector) {
+
+        jQuery(selector + 'Tab a').tab('show'); // tab must be visible for jquery to calculate positions
+
+        var cols = jQuery(selector + ' div.form-group');
+        var colCount = 0;
+
+        cols.each(function(i, col) {
+            colCount += getBootstrapColWidth(this);
+            
+            if (colCount > 12) { // if column count is more than max bootstrap width of 12
+                colCount -= 12;
+                jQuery(this).before('<div class="clearfix"></div>'); // insert clearfix before current dom element
+            }
+        });
+    }
+
+    /**
+     * Given a DOM element, function will return
+     * the bootstrap column width if the element
+     * has a bootstrap column class. For example,
+     * the element with class .col-sm-4 would
+     * return the interger 4.
+     * 
+     * @param {obj} - DOM element (e.g. this)
+     *
+     * @return {int} - column width, as a number
+     *   between 1 and 12 (inclusive); if DOM
+     *   element was not a bootstrap column, 0
+     *   is returned
+     */
+    function getBootstrapColWidth(el) {
+        var allClass = jQuery(el).attr('class');
+        var colClass = allClass.split(' ').filter(function(d) { return d.includes('col-'); }); // array of classes that contain string col-
+
+        for (var i = 0; i < colClass.length; i++) {
+            var d = colClass[i];
+            var last = parseInt(d[d.length - 1]);
+            if (isInt(last)) return last;
+        };
+
+        return 0;
     }
 
 
@@ -387,7 +446,7 @@ function gui() {
                     slider = generateFormSlider(filtersTab, col+'Filter', col, 'col-sm-4 filterInput', sliderOptions, format);
                     slider.noUiSlider.on('start',function() { showResetButton() }); // activate reset button
                 } else if (colType == 'str') {
-                    select = generateFormSelect(colVals, filtersTab, col+'Filter', col, 'All', 'col-sm-4 filterInput'); // TODO this will potentially generate a select with a ton of options ...
+                    select = generateFormSelect(colVals, filtersTab, col+'Filter', col, 'col-sm-4 filterInput', 'All'); // TODO this will potentially generate a select with a ton of options ...
                     select.on('input',function() { showResetButton() }); // activate reset button
                 } else if (colType == 'datetime') {
                 }
@@ -605,8 +664,8 @@ function gui() {
     }
 
     /**
-     * Return type of datum, one of either
-     * int, float, str, or datetime.
+     * Given a variable, return type of datum,
+     * one of either int, float, str, or datetime.
      */
     function getDatType(mixedVar) {
         if (!isInt(mixedVar) && !isFloat(mixedVar) && isDateTime(mixedVar)) return 'datetime';
@@ -934,6 +993,7 @@ function gui() {
             sliderValues[tabName][id] = d.map(function(e) { return convertToNumber(e); });
         });
 
+
         return slider;
     }
 
@@ -982,6 +1042,7 @@ function gui() {
      */
     function generateFormToggle(selector, id, label, domClass, options) {
 
+
         if (typeof domClass === 'undefined' || !domClass) domClass = 'col-sm-2';
         label = typeof label === 'undefined' ? id : label; // in case label not set in options, use the id
         var formGroup = inputHeader(selector, domClass, id, label);
@@ -995,6 +1056,7 @@ function gui() {
             .attr('name',id);
 
         jQuery('input#'+id).bootstrapToggle(options); //activate
+
     }
 
 
@@ -1022,6 +1084,43 @@ function gui() {
             .attr('name',id)
     }
 
+
+    /**
+     * Generate an html input used in a form along with the label. Note that DOM generated
+     * by this function will be assigned a col-sm-4 class.
+     *
+     *
+     * @param {str} type - type of input element, either 'number' or 'text'
+     * @param {bool} required - whether the input is required - will set the required attribute
+     * @param {string} selector - element to which to add form-group (label and select)
+     * @param {string} id - id/name to give to select
+     * @param {string} label - label text
+     * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
+     *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
+     *
+     * @return select DOM
+     *
+     */
+    function generateFormInput(type, required, selector, id, label, domClass) {
+
+        if (type != 'number' && type != 'text') return;
+
+        if (typeof required === 'undefined' || required === null) required = false;
+        if (typeof domClass === 'undefined' || domClass == false) domClass = 'col-sm-4';
+        label = typeof label === 'undefined' ? id : label; // in case label not set in options, use the id
+
+        var formGroup = inputHeader(selector, domClass, id, label);
+
+        var input = formGroup.append('input')
+            .attr('class','form-control')
+            .attr('id',id)
+            .attr('name',id)
+            .attr('required',required)
+            .attr('type',type);
+    
+    }
+
+
     /**
      * Generate a select used in a form along with the label. Note that DOM generated
      * by this function will be assigned a col-sm-4 class.
@@ -1031,20 +1130,20 @@ function gui() {
      *
      * @param {array/obj}  vals - list of options to populate select with. If an
      *   array is passed, both the select value and text will be the set with the
-     *   array elements; if an object is passed keys will be the option value and
-     *   obj values will be the option text.
+     *   array elements; if an object is passed keys will be the option label and
+     *   obj values will be the option value.
      * @param {string} selector - element to which to add form-group (label and select)
      * @param {string} id - id/name to give to select
      * @param {string} label - label text
-     * @param {str/obj} addOption - (optional, default=False) whether to prepend an additional
-     *  in the select list, allows for things like 'All' or 'None' - note this will be the first option
      * @param {str} domClass - (optional, default=col-sm-4) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
+     * @param {str/obj} addOption - (optional, default=False) whether to prepend an additional option
+     *  in the select list, allows for things like 'All' or 'None' - note this will be the first option
      *
      * @return select DOM
      *
      */
-    function generateFormSelect(vals, selector, id, label, addOption, domClass) {
+    function generateFormSelect(vals, selector, id, label, domClass, addOption) {
 
         if (typeof addOption === 'undefined') addOption = false;
         if (typeof domClass === 'undefined' || domClass == false) domClass = 'col-sm-4';
@@ -1058,9 +1157,9 @@ function gui() {
             .attr('name',id)
 
         select.selectAll('option')
-            .data(Array.isArray(vals) ? vals : Object.keys(vals)).enter()
+            .data(Array.isArray(vals) ? vals : Object.values(vals)).enter()
             .append('option')
-            .text(function (d,i) { return Array.isArray(vals) ? d : Object.values(vals)[i]; })
+            .text(function (d,i) { return Array.isArray(vals) ? d : Object.keys(vals)[i]; })
             .attr('value', function (d) { return d; });
 
         // prepend option to select
@@ -1077,19 +1176,29 @@ function gui() {
             jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + id + " option:first").val());
         }
 
+
         return select;
 
     }
 
     /**
      * Append a tab to the GUI, assume ul .nav already exists
+     *
+     * @param {str} id - ID to give to tab-content tab, this
+     *  will also set the .nav li element with an id of
+     *  id + 'Tab'
+     * @param {str} text - label text for tab
+     * @param {bool} active - whether to give the tabpanel 
+     *  the 'active' class
      */
     function addTab(id, text, active) {
-        // setup plot basics tab
-        d3.select('.nav').append('li')
+
+        id = id.replace('#','');
+
+        var a = d3.select('.nav').append('li')
             .attr('role','presentation')
             .attr('class', function() { return active ? 'active' : null})
-            .attr('id',id+'Tab')
+            .attr('id', id + 'Tab')
             .append('a')
             .attr('role','tab')
             .attr('data-toggle','tab')
@@ -1099,8 +1208,7 @@ function gui() {
         d3.select('.tab-content').append('div')
             .attr('role','tabpanel')
             .attr('class', function () { return active ? 'tab-pane row active' : 'tab-pane row'})
-            .attr('id',id.replace('#',''))
-
+            .attr('id',id)
     }
 
  
