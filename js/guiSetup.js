@@ -73,7 +73,13 @@ var guiSetup = {
                     label: 'KDE bandwidth',
                     type: 'text',
                     required: false,
-                    help: "heuristic for kde bandwidth calculation, can be float or str, if str, must be one of 'scott' or 'silverman' [default 'scott']" // TODO
+                    help: { // uses same options as bootstrap popover options https://getbootstrap.com/javascript/#popovers
+                        content: "heuristic for kde bandwidth calculation, can be float or str, if str, must be one of 'scott' or 'silverman' [default 'scott']",
+                        title: "moo",
+                        trigger: "hover",
+                        html: true,
+                        placement: "top"
+                    }
                 }, {
                     accessor: 'resolution',
                     label: 'KDE resolution',
