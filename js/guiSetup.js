@@ -74,8 +74,8 @@ var guiSetup = {
                     type: 'text',
                     required: false,
                     help: { // uses same options as bootstrap popover options https://getbootstrap.com/javascript/#popovers
-                        content: "heuristic for kde bandwidth calculation, can be float or str, if str, must be one of 'scott' or 'silverman' [default 'scott']",
-                        title: "moo",
+                        content: "Heuristic for kde bandwidth calculation, can be <code>float</code> or <code>str</code>; if <code>str</code>, must be one of <em>scott</em> or <em>silverman</em>.<br><strong>[default 'scott']</strong>",
+                        title: "Help",
                         trigger: "hover",
                         html: true,
                         placement: "top"

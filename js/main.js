@@ -42,10 +42,9 @@ function gui() {
         facetsTab = '#plotFacets',
         optionsTab = '#plotOptions',
         filtersTab = '#plotFilter',
-        sliderValues = {}, // keeps track of all current slider values
+        sliderValues = {}, // keeps track of all current slider values {tabName: {sliderName: val}, ...}
         unique = false,
         colTypes = false
-
 
     /**
      * Check GUI for errors in option choices, if
@@ -266,7 +265,7 @@ function gui() {
                 var label = "name" in axisSetup ? axisSetup.name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
                 var addOption = d == 'z' ? {'None':null} : false;
-                generateFormSelect(setupTab, {values:cols, id:d +"-axis", label:label, domClass:domClass, addOption:addOption});
+                generateFormSelect(setupTab, {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:addOption});
             }
         });
     }
@@ -288,10 +287,10 @@ function gui() {
 
             dir.forEach(function(d) {
                 var cols = getCols('ordinal');
-                generateFormSelect(facetsTab, {values:cols, id:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
+                generateFormSelect(facetsTab, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
             });
 
-            generateFormTextInput(facetsTab, {id:'colWrap', label:'Column wrap', type:'number'});
+            generateFormTextInput(facetsTab, {accessor:'colWrap', label:'Column wrap', type:'number'});
         } else {
             d3.select(facetsTab).style('display','hidden');
         }
@@ -320,7 +319,7 @@ function gui() {
                 } else if (d.type == 'slider') {
                     generateFormSlider(optionsTab, d);
                 } else if (d.type == 'text' || d.type == 'number') {
-                    generateFormInput(optionsTab, d)
+                    generateFormTextInput(optionsTab, d)
                 }
 
             })
@@ -443,10 +442,10 @@ function gui() {
                     } else if (colType == 'float') {
                         format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + parseFloat(d[1]).toFixed(2) + ']'; };
                     }
-                    slider = generateFormSlider(filtersTab, {id:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format});
+                    slider = generateFormSlider(filtersTab, {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format});
                     slider.noUiSlider.on('start',function() { showResetButton() }); // activate reset button
                 } else if (colType == 'str') {
-                    select = generateFormSelect(filtersTab, {values: colVals, id: col+'Filter', label: col, domClass: 'col-sm-4 filterInput', addOption: 'All'}); // TODO this will potentially generate a select with a ton of options ...
+                    select = generateFormSelect(filtersTab, {values:colVals, accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', addOption:'All'}); // TODO this will potentially generate a select with a ton of options ...
                     select.on('input',function() { showResetButton() }); // activate reset button
                 } else if (colType == 'datetime') {
                 }
@@ -470,13 +469,12 @@ function gui() {
      * values - in this case default means the first option
      * for a select, and min/max values for sliders.
      */
-    function resetFilters() { // TODO - sliders don't reset on iOS
+    function resetFilters() {
 
         // reset sliders
-        for (var col in getCols()) {
+        for (var col in colTypes) {
             var colType = colTypes[col];
             if (colType == 'int' || colType == 'float') {
-
                 var slider = d3.select('#'+col+'FilterSliderWrap').node()
                 var colVals = d3.extent(unique[col]);
                 slider.noUiSlider.set(colVals);
@@ -946,7 +944,7 @@ function gui() {
      *
      * @param {string} selector - element to which to add form-group (label and select)
      * @param {obj} opts - options for select, can contain the following keys:
-     * @key {string} id - id to give to toggle
+     * @key {string} accessor - id/name to give to toggle
      * @key {string} label - label text
      * @key {str} domClass - (optional, default=col-sm-4) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
@@ -969,29 +967,31 @@ function gui() {
                 }
             };
         }
-        opts.label = typeof opts.label === 'undefined' ? opts.id : opts.label; // in case label not set in options, use the id
+        var id = opts.accessor
+        opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
+        var format = opts.format;
         var formGroup = inputHeader(selector, opts);
 
         formGroup.append('span')
             .attr('class','muted')
-            .attr('id',opts.id+'Val')
+            .attr('id',id+'Val')
             .text(opts.format(opts.options.start));
 
         var slider = formGroup.append('div')
-            .attr('id',opts.id+'SliderWrap')
+            .attr('id',id+'SliderWrap')
             .node()
 
         // generate slider
         noUiSlider.create(slider, opts.options);
         var tabName = selector.replace('#','');
         if (!(tabName in sliderValues)) sliderValues[tabName] = {};
-        sliderValues[tabName][opts.id] = opts.options.start; 
+        sliderValues[tabName][id] = opts.options.start; 
 
         // add event listener for slider change
         slider.noUiSlider.on('slide', function(d) {
-            jQuery('#' + opts.id + 'Val').text(format(d)); // update displayed value
+            jQuery('#' + id + 'Val').text(format(d)); // update displayed value
             var tabName = jQuery('#' + id + 'Val').closest('.tab-pane').attr('id');
-            sliderValues[tabName][opts.id] = d.map(function(e) { return convertToNumber(e); });
+            sliderValues[tabName][id] = d.map(function(e) { return convertToNumber(e); });
         });
 
 
@@ -1023,10 +1023,23 @@ function gui() {
     function inputHeader(selector, opts) {
         var formGroup = d3.select(selector).append('div')
             .attr('class', 'form-group ' + opts.domClass)
+            
+        var span = formGroup.append('span')
+            .attr('id',opts.accessor + 'Wrap')
         
-        formGroup.append('label')
-            .attr('for',opts.id)
+        span.append('label')
+            .attr('for',opts.accessor)
             .html(opts.label)
+
+        // add popover
+        if (typeof opts.help !== 'undefined') {
+            span.attr('data-toggle','popover')
+                .append('i')
+                .attr('class','fa fa-info-circle text-primary')
+                .attr('aria-hidden',true)
+                .style('margin-left','5px')
+            jQuery('#' + opts.accessor + 'Wrap').popover(opts.help);
+        }
 
         return formGroup;
     }
@@ -1044,10 +1057,9 @@ function gui() {
      */
     function generateFormToggle(selector, opts) {
 
-
-
         if (typeof opts.domClass === 'undefined' || !opts.domClass) opts.domClass = 'col-sm-2';
-        opts.label = typeof opts.label === 'undefined' ? opts.id : opts.label; // in case label not set in options, use the id
+        var id = opts.accessor
+        opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
         var formGroup = inputHeader(selector, opts);
             
         formGroup.append('br')
@@ -1055,10 +1067,10 @@ function gui() {
         var toggle = formGroup.append('input')
             .attr('type','checkbox')
             .attr('data-toggle','toggle')
-            .attr('id',opts.id)
-            .attr('name',opts.id);
+            .attr('id',id)
+            .attr('name',id);
 
-        jQuery('input#'+opts.id).bootstrapToggle(opts.options); //activate
+        jQuery('input#'+id).bootstrapToggle(opts.options); //activate
 
     }
 
@@ -1068,7 +1080,7 @@ function gui() {
      *
      * @param {string} selector - element to which to add form-group (label and select)
      * @param {obj} opts - options for select, can contain the following keys:
-     * @key {string} id - id/name to give to input
+     * @key {string} accessor - id/name to give to input
      * @key {string} label - label text
      * @key {str} domClass - (optional, default=col-sm-4) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
@@ -1076,53 +1088,26 @@ function gui() {
      */
     function generateFormTextInput(selector, opts) {
 
-        if (typeof opts.domClass === 'undefined' || !opts.domClass) opts.domClass = 'col-sm-4';
-        if (typeof opts.type === 'undefined' || !opts.type) opts.type = 'text';
-        opts.label = typeof opts.label === 'undefined' ? opts.id : opts.label; // in case label not set in options, use the id
-        var formGroup = inputHeader(selector, opts);
-            
-        var textInput = formGroup.append('input')
-            .attr('class','form-control')
-            .attr('type',opts.type)
-            .attr('id',opts.id)
-            .attr('name',opts.id)
-    }
-
-
-    /**
-     * Generate an html input used in a form along with the label. Note that DOM generated
-     * by this function will be assigned a col-sm-4 class.
-     *
-     * @key {string} selector - element to which to add form-group (label and select)
-     * @param {obj} opts - options for select, can contain the following keys:
-     * @param {str} type - type of input element, either 'number' or 'text'
-     * @key {bool} required - whether the input is required - will set the required attribute
-     * @key {string} id - id/name to give to select
-     * @key {string} label - label text
-     * @key {str} domClass - (optional, default=col-sm-4) class to assign to 
-     *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
-     *
-     * @return select DOM
-     *
-     */
-    function generateFormInput(selector, opts) {
-
         if (opts.type != 'number' && opts.type != 'text') return;
 
-        if (typeof opts.required === 'undefined' || opts.required === null) ropts.equired = false;
+        if (typeof opts.required === 'undefined' || opts.required === null) opts.required = false;
         if (typeof opts.domClass === 'undefined' || opts.domClass == false) opts.domClass = 'col-sm-4';
-        opts.label = typeof opts.label === 'undefined' ? opts.id : opts.label; // in case label not set in options, use the id
+        var id = opts.accessor
+        opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
+        
 
         var formGroup = inputHeader(selector, opts);
 
         var input = formGroup.append('input')
             .attr('class','form-control')
-            .attr('id',opts.id)
-            .attr('name',opts.id)
+            .attr('id',id)
+            .attr('name',id)
             .attr('required',opts.required)
             .attr('type',opts.type);
     
     }
+
+
 
 
     /**
@@ -1138,7 +1123,7 @@ function gui() {
      *   array is passed, both the select value and text will be the set with the
      *   array elements; if an object is passed keys will be the option label and
      *   obj values will be the option value.
-     * @key {string} id - id/name to give to select
+     * @key {string} accessor - id/name to give to select
      * @key {string} label - label text
      * @key {str} domClass - (optional, default=col-sm-4) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
@@ -1152,14 +1137,15 @@ function gui() {
 
         if (typeof opts.addOption === 'undefined') opts.addOption = false;
         if (typeof opts.domClass === 'undefined' || opts.domClass == false) opts.domClass = 'col-sm-4';
-        opts.label = typeof opts.label === 'undefined' ? opts.id : opts.label; // in case label not set in options, use the id
+        var id = opts.accessor
+        opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
 
         var formGroup = inputHeader(selector, opts);
 
         var select = formGroup.append('select')
             .attr('class','form-control')
-            .attr('id',opts.id)
-            .attr('name',opts.id)
+            .attr('id',id)
+            .attr('name',id)
 
         select.selectAll('option')
             .data(Array.isArray(opts.values) ? opts.values : Object.values(opts.values)).enter()
@@ -1178,7 +1164,7 @@ function gui() {
                 value = Object.values(opts.addOption)[0];
                 text = Object.keys(opts.addOption)[0];
             }
-            jQuery('#' + opts.id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + opts.id + " option:first").val());
+            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + id + " option:first").val());
         }
 
 
@@ -1207,7 +1193,7 @@ function gui() {
             .append('a')
             .attr('role','tab')
             .attr('data-toggle','tab')
-            .attr('href',id)
+            .attr('href','#'+id)
             .text(text)
 
         d3.select('.tab-content').append('div')
@@ -1223,7 +1209,7 @@ function gui() {
     function populateGUI(options) {
 
         addTab(setupTab, 'Setup', true);
-        generateFormSelect(setupTab, {values:plotTypes(), id: plotTypesID.replace('#',''), label:"Plot type"})
+        generateFormSelect(setupTab, {values:plotTypes(), accessor:plotTypesID.replace('#',''), label:"Plot type"})
         d3.select(plotTypesID).on('change', plotTypeChange);
 
         plotTypeChange(); // fire to select first plot type
