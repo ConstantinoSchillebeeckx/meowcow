@@ -3,6 +3,7 @@ TODO
 - date picker
 - gui setup validation function (needs to be validated against uploaded data)
 - implement filtering
+- loading in main plot area
 */
 
 
@@ -28,7 +29,6 @@ function gui() {
             buildSkeleton(container)
             colTypes = findColumnTypes(data, ignoreCol, colTypes);
             unique = getAllUnique(data, colTypes);
-            console.log(colTypes, unique)
             populateGUI(options);
         }
     }
@@ -477,7 +477,7 @@ function gui() {
             if (colType == 'int' || colType == 'float') {
                 var slider = d3.select('#'+col+'FilterSliderWrap').node()
                 var colVals = d3.extent(unique[col]);
-                slider.noUiSlider.set(colVals);
+                slider.noUiSlider.set(colVals); // TODO use this.options.start instead
             }
         }
 
@@ -971,6 +971,8 @@ function gui() {
         opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
         var format = opts.format;
         var formGroup = inputHeader(selector, opts);
+        var minValueReplace = opts.minValueReplace;
+        var maxValueReplace = opts.maxValueReplace;
 
         formGroup.append('span')
             .attr('class','muted')
@@ -985,13 +987,36 @@ function gui() {
         noUiSlider.create(slider, opts.options);
         var tabName = selector.replace('#','');
         if (!(tabName in sliderValues)) sliderValues[tabName] = {};
-        sliderValues[tabName][id] = opts.options.start; 
+
+        // initialize slider value store
+        var initValue = opts.options.start;
+        if (initValue.length == 2) {
+            if (typeof minValueReplace !== 'undefined' && initValue[0] == opts.options.range.min) initValue[0] = minValueReplace;
+            if (typeof maxValueReplace !== 'undefined' && initValue[1] == opts.options.range.max) initValue[1] = maxValueReplace;
+        } else {
+            if (typeof minValueReplace !== 'undefined' && initValue == opts.options.range.min) initValue = minValueReplace;
+            if (typeof maxValueReplace !== 'undefined' && initValue == opts.options.range.max) initValue = maxValueReplace;
+        }
+        sliderValues[tabName][id] = initValue;
 
         // add event listener for slider change
         slider.noUiSlider.on('slide', function(d) {
-            jQuery('#' + id + 'Val').text(format(d)); // update displayed value
+            var sliderVal = this.get();
+            var sliderMin = this.options.range.min;
+            var sliderMax = this.options.range.max;
+            jQuery('#' + id + 'Val').text(format(sliderVal)); // update displayed value
             var tabName = jQuery('#' + id + 'Val').closest('.tab-pane').attr('id');
-            sliderValues[tabName][id] = d.map(function(e) { return convertToNumber(e); });
+
+            // store slider values into gui global
+            // replace the value with min/max ValueReplace if present
+            sliderValues[tabName][id] = d.map(function(e, i) { 
+                if (i == 0) {
+                    if (typeof minValueReplace !== 'undefined' && sliderVal == sliderMin) return minValueReplace;
+                } else if (i == 1) { // if two handled slider, this is the right one
+                    if (typeof maxValueReplace !== 'undefined' && sliderVal == sliderMax) return maxValueReplace;
+                }
+                return convertToNumber(e); 
+            });
         });
 
 
@@ -1071,6 +1096,7 @@ function gui() {
             .attr('name',id);
 
         jQuery('input#'+id).bootstrapToggle(opts.options); //activate
+        if (opts.set) jQuery('input#'+id).bootstrapToggle('on'); // set default on 
 
     }
 
@@ -1244,7 +1270,6 @@ function gui() {
         
         // everything looks good, let's render!
         jQuery('#renderBtn').html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
-        
 
         // generate facets and group data
         var facets = setupFacetGrid(canvas, guiVals, data, unique);
@@ -1487,7 +1512,7 @@ function gui() {
 
     /**
      * Once all GUI options and data are set, we can
-     * render the C3 plot
+     * render the plot.
      *
      * @param {obj} dat - data for each facet
      * @param {string} sel - selector for facet into which to render plot
@@ -1500,9 +1525,8 @@ function gui() {
     function populateChart(dat, sel, formVals, gui, title) {
 
         var plotType = formVals.plotSetup.plotTypes.value;
-        var plotOptions = options.plotTypes[plotType]; // this defines all plot options and accessors
+        var plotOptions = options.plotTypes[plotType]; // lookup options for selected plot type
         var datReady = dat;
-        var axes = ['x','y','z'];
 
         // nvd3 expects SVG to exist already
         d3.select(sel).append('svg');
@@ -1516,31 +1540,39 @@ function gui() {
 
         // create the chart
         nv.addGraph(function() {
-            var chart = nv.models[plotType]()
-            
+            console.log('Rendering ' + plotType);
+            var chart = nv.models[plotType]();
+
             // setup data accessors for each axis
             // we will need the name of the accessor function to be called on the chart
             // as well as the actual accessor function (which is defined by the GUI)
-            axes.forEach(function(d) {
+            console.log('Setting options');
+            ['x','y','z'].forEach(function(d) {
                 var accessorName = plotOptions.setup[d].accessor;
                 var accessorAttr = formVals.plotSetup[d+'-axis'].value; // get the GUI value for the given chart axis option
                 if (accessorName) {
+                    console.log(accessorName + ':' + accessorAttr);
                     var accessorFunc = function(d) { return d[accessorAttr] };
                     chart[accessorName](accessorFunc);
                 }
             });
 
+
             // set chart options
             plotOptions.options.forEach(function(d) {
                 var optionName = d.accessor;
                 var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
-                if (typeof optionValue === 'object') optionValue = optionValue.value; // select value stored as object, get just the value
+
+                // if GUI option was a select input type, data comes in as an object, grab just the values
+                if (typeof optionValue === 'object' && optionValue != null) {
+                    optionValue = optionValue.value;
+                }
+                console.log(optionName + ':' + optionValue);
                 chart[optionName](optionValue)
             })
 
             // set title
             if (title !== null && title) chart.title(title);
-
 
             //formatAxisTitle(chart, guiVals);
             //formatTooltip(chart, guiVals);

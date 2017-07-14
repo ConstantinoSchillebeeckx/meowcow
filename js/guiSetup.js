@@ -32,6 +32,11 @@ var guiSetup = {
                     type: 'select',
                     values: ['iqr','minmax','stddev']
                 },{
+                    accessor: 'observationType',
+                    label: 'Observation type',
+                    type: 'select',
+                    values: ['random','swarm','centered']
+                },{
                     accessor: 'notchBox',
                     label: 'Notch boxes',
                     type: 'toggle',
@@ -103,6 +108,7 @@ var guiSetup = {
                     type: 'slider',
                     options: {start: 0, range: {'min':0, 'max':50}, step:1, connect: [true, false],},
                     format: function(d) { return '[' + parseInt(d) + ']' },
+                    minValueReplace: null, // replace slider value with this if slider on minimum (0 in this case)
                 }, {
                     accessor: 'observationRadius',
                     label: 'Observation radius',
