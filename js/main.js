@@ -6,6 +6,8 @@ TODO
 - loading in main plot area
 */
 
+var chartArray = []; // keep chart objects here so that we can call chart.update();
+var guiFacetCols, guiFacetRows, guiFacetWrap;
 
 function gui() {
     "use strict";
@@ -287,10 +289,26 @@ function gui() {
 
             dir.forEach(function(d) {
                 var cols = getCols('ordinal');
-                generateFormSelect(facetsTab, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
+                var select = generateFormSelect(facetsTab, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
+                select.on('change',function() { showButton('#facetsBtn') }); // activate reset button
             });
 
-            generateFormTextInput(facetsTab, {accessor:'colWrap', label:'Column wrap', type:'number'});
+            var input = generateFormTextInput(facetsTab, {accessor:'colWrap', label:'Column wrap', type:'number'});
+            input.on('change',function() { showButton('#facetsBtn') }); // activate reset button
+
+            // filter reset button
+            // initially hide it
+            d3.select(facetsTab)
+                .append('div')
+                .attr('class','form-group col-sm-2 col-sm-offset-10')
+                .style('margin-bottom',0)
+                .append('button')
+                .attr('id','facetsBtn')
+                .attr('class','btn btn-warning btn-xs pull-right')
+                .attr('disabled','disabled')
+                .style('display','none')
+                .on('click', resetFacets)
+                .text('Reset filters');
         } else {
             d3.select(facetsTab).style('display','hidden');
         }
@@ -410,6 +428,7 @@ function gui() {
                 .html(note)
 
             // filter reset button
+            // initially hide it
             d3.select(filtersTab)
                 .append('div')
                 .attr('class','form-group col-sm-2')
@@ -443,10 +462,10 @@ function gui() {
                         format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + parseFloat(d[1]).toFixed(2) + ']'; };
                     }
                     slider = generateFormSlider(filtersTab, {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format});
-                    slider.noUiSlider.on('start',function() { showResetButton() }); // activate reset button
+                    slider.noUiSlider.on('start',function() { showButton('#resetBtn') }); // activate reset button
                 } else if (colType == 'str') {
                     select = generateFormSelect(filtersTab, {values:colVals, accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', addOption:'All'}); // TODO this will potentially generate a select with a ton of options ...
-                    select.on('input',function() { showResetButton() }); // activate reset button
+                    select.on('input',function() { showButton('#restBtn') }); // activate reset button
                 } else if (colType == 'datetime') {
                 }
             }
@@ -458,10 +477,26 @@ function gui() {
     /**
      * remove read-only from reset button and show it
      */
-    function showResetButton() {
-        jQuery('#resetBtn').attr('disabled',false)
-            .show();
+    function showButton(id) {
+        jQuery(id).attr('disabled',false).show();
     }
+
+  
+    /**
+     * on click even handler to reset all the facet
+     * inputs as well as hide the rest button
+     */ 
+    function resetFacets() {
+
+        // reset all select to first option
+        jQuery(facetsTab + ' select').prop("selectedIndex", 0);
+
+        // reset button to read only and hide
+        d3.select('#facetsBtn')
+            .attr('disabled','disabled')
+            .style('display','none');
+        return false;
+    } 
 
 
     /**
@@ -517,8 +552,6 @@ function gui() {
      *
      */
     function buildSkeleton(selector) {
-
-
 
         // setup containers
         var container = d3.select(selector);
@@ -1009,14 +1042,24 @@ function gui() {
 
             // store slider values into gui global
             // replace the value with min/max ValueReplace if present
+            var sliderValue;
             sliderValues[tabName][id] = d.map(function(e, i) { 
                 if (i == 0) {
-                    if (typeof minValueReplace !== 'undefined' && sliderVal == sliderMin) return minValueReplace;
+                    if (typeof minValueReplace !== 'undefined' && sliderVal == sliderMin) {
+                        sliderValue = minValueReplace;
+                    } else {
+                        sliderValue = convertToNumber(e);
+                    }
                 } else if (i == 1) { // if two handled slider, this is the right one
-                    if (typeof maxValueReplace !== 'undefined' && sliderVal == sliderMax) return maxValueReplace;
+                    if (typeof maxValueReplace !== 'undefined' && sliderVal == sliderMax) {
+                        sliderValue = maxValueReplace;
+                    } else {
+                        sliderValue = convertToNumber(e);
+                    }
                 }
-                return convertToNumber(e); 
+                return sliderValue;
             });
+
         });
 
 
@@ -1058,6 +1101,9 @@ function gui() {
 
         // add popover
         if (typeof opts.help !== 'undefined') {
+
+            if (!('container' in opts.help)) opts.help.container = 'div#guiWrap'; // constrain popover to GUI if not specified
+
             span.attr('data-toggle','popover')
                 .append('i')
                 .attr('class','fa fa-info-circle text-primary')
@@ -1130,7 +1176,10 @@ function gui() {
             .attr('name',id)
             .attr('required',opts.required)
             .attr('type',opts.type);
-    
+   
+        if (typeof opts.set !== 'undefined') input.attr('value',opts.set); 
+
+        return input;
     }
 
 
@@ -1185,14 +1234,13 @@ function gui() {
             var text = '';
             if (typeof opts.addOption !== 'object') {
                 value = opts.addOption;
-                text = opts.addOption;
+                text = value;
             } else {
                 value = Object.values(opts.addOption)[0];
                 text = Object.keys(opts.addOption)[0];
             }
             jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + id + " option:first").val());
         }
-
 
         return select;
 
@@ -1246,30 +1294,53 @@ function gui() {
 
 
 
-
-
-
+    function getFacetRow(d) { return d.plotFacets['horizontal-facet'].value; }
+    function getFacetCol(d) { return d.plotFacets['vertical-facet'].value; }
+    function getFacetWrap(d) { return d.plotFacets.colWrap.value; }
+    function dataFilterOn() { return jQuery('#resetBtn').is(':visible'); }
 
     /**
+     * If user specifies to filter data
      * TODO
+     */
+    function filterData(dat) {
+        console.log('TODO: filter data');
+
+        return dat;
+    }
+
+    /**
+     * on click event handler for 'Render' button. will check all the user set
+     * GUI values and ensure plots can be rendered. will also remove any current
+     * plots if needed (only when facet options are changed). finally, will also
+     * setup all the proper facets if needed and then render the plot in the facet.
+     *
+     * expects the following variables to have been set on the main plotting page:
+     * @param data
+     * @param canvas
+     * @param unique
      *
      * @return void
     */
     function renderPlot() {
 
-        // clear any previously existent plots/warnings
-        jQuery(canvas).empty(); // TODO we should just update the chart if only the options are changed; that way we use the built-in transitions
-        jQuery('#warning').empty();
-
-
         // get GUI vals
         var guiVals = getGUIvals('form');
+
+        // clear any previously existent plots/warnings
+        // plots are only cleared if the GUI options for facets are changed
+        if (guiFacetCols !== getFacetRow(guiVals) || guiFacetRows !== getFacetCol(guiVals) || guiFacetWrap !== getFacetWrap(guiVals)) jQuery(canvas).empty();
+        jQuery('#warning').empty();
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
         if (guiWarnings(guiVals)) return;
         
         // everything looks good, let's render!
+        // change render button to spinner
         jQuery('#renderBtn').html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
+
+        // filter data if needed
+        if (dataFilterOn()) data = filterData(data);
 
         // generate facets and group data
         var facets = setupFacetGrid(canvas, guiVals, data, unique);
@@ -1282,11 +1353,17 @@ function gui() {
         var hLabel = facetVals['horizontal-facet'].label
         var vLabel = facetVals['vertical-facet'].label
 
+        // store current GUI facet options so we can compare for updates
+        guiFacetCols = getFacetRow(guiVals);
+        guiFacetRows = getFacetCol(guiVals);
+        guiFacetWrap = getFacetWrap(guiVals);
+
         // draw plot in each facet
+        var chartCount = 0;
         facetRows.forEach(function(rowName,i) {
             facetCols.forEach(function(colName,j) {
-                var selFacet = '#row_' + i + '-col_' + j;
 
+                var selFacet = '#row_' + i + '-col_' + j;
                 var facetDat = facets[rowName][colName];
 
                 if (typeof facetDat !== 'undefined') {
@@ -1300,9 +1377,10 @@ function gui() {
                         }
                     }
 
-                    var chart = populateChart(facetDat, selFacet, guiVals, gui, title);
+                    // draw plot
+                    populateChart(facetDat, selFacet, guiVals, title, chartCount);
                 }
-
+                chartCount += 1;
             });
 
             // update list of columns for new row
@@ -1517,12 +1595,11 @@ function gui() {
      * @param {obj} dat - data for each facet
      * @param {string} sel - selector for facet into which to render plot
      * @param {obj} formVals - GUI option values
-     * @param {obj} gui - GUI object
      * @param {string} title - [optional] title for plot, should be null if no title
      *
      * @return void
      */
-    function populateChart(dat, sel, formVals, gui, title) {
+    function populateChart(dat, sel, formVals, title, chartCount) {
 
         var plotType = formVals.plotSetup.plotTypes.value;
         var plotOptions = options.plotTypes[plotType]; // lookup options for selected plot type
@@ -1541,7 +1618,14 @@ function gui() {
         // create the chart
         nv.addGraph(function() {
             console.log('Rendering ' + plotType);
-            var chart = nv.models[plotType]();
+            var chart;
+
+            // load previous chart if it exists
+            if (typeof chartArray[chartCount] !== 'undefined') {
+                chart = chartArray[chartCount];
+            } else {
+                chart = nv.models[plotType]();
+            }
 
             // setup data accessors for each axis
             // we will need the name of the accessor function to be called on the chart
@@ -1557,16 +1641,20 @@ function gui() {
                 }
             });
 
-
             // set chart options
             plotOptions.options.forEach(function(d) {
                 var optionName = d.accessor;
                 var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
 
+                // if GUI option was an array (for a single handle slider) grab the only element
+                if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
+
                 // if GUI option was a select input type, data comes in as an object, grab just the values
-                if (typeof optionValue === 'object' && optionValue != null) {
-                    optionValue = optionValue.value;
-                }
+                if (typeof optionValue === 'object' && optionValue != null) optionValue = optionValue.value;
+
+                // convert bool string into bool
+                optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
+
                 console.log(optionName + ':' + optionValue);
                 chart[optionName](optionValue)
             })
@@ -1583,6 +1671,9 @@ function gui() {
 
             nv.utils.windowResize(chart.update);
 
+            chartArray[chartCount] = chart;
+
+            return chart;
         });
 
     }
