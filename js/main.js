@@ -257,10 +257,9 @@ function gui() {
      */
     function setupPlotBasics() {
 
-        var axes = ['x','y','z'];
-        var availableAxes = getAvailableAxes()
+        var availableAxes = getAvailableAxes();
 
-        axes.forEach(function(d) {
+        ['x','y','z'].forEach(function(d) {
             if (availableAxes.indexOf(d) !== -1) {
                 var axisSetup = getAxisSetup(d);
                 var cols = getCols(axisSetup.type);
@@ -285,9 +284,16 @@ function gui() {
             // add tab and container
             addTab(facetsTab, 'Facets');
 
-            var dir = ['horizontal','vertical'];
+            // add instructions
+            var note = 'Facets form a matrix of panels defined by row and column facetting variables; it is used to draw plots';
+            note += ' with multiple axes where each axes shows the same relationship conditioned on different levels of some variable.';
+            d3.select(facetsTab).append('div')
+                .attr('class','form-group col-sm-12')
+                .style('margin-bottom',0)
+                .append('p')
+                .html(note);
 
-            dir.forEach(function(d) {
+            ['horizontal','vertical'].forEach(function(d) {
                 var cols = getCols('ordinal');
                 var select = generateFormSelect(facetsTab, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
                 select.on('change',function() { showButton('#facetsBtn') }); // activate reset button
@@ -326,7 +332,13 @@ function gui() {
             // add tab and container
             addTab(optionsTab, 'Options');
 
-            var colWidthCount = 0; // count bootstrap col width
+            // add instructions
+            var note = 'Use the inputs below to adjust options of the plot.';
+            d3.select(optionsTab).append('div')
+                .attr('class','form-group col-sm-10')
+                .style('margin-bottom',0)
+                .append('p')
+                .html(note)
 
             plotOptions.forEach(function(d) {
 
@@ -418,7 +430,7 @@ function gui() {
             // add tab and container
             addTab(filtersTab, 'Filters');
 
-            // add filter notes
+            // add instructions
             var note = 'Use the inputs below to filter the plotted data.';
             note += '<br><span class="label label-default">NOTE</span> ';
             note += 'each additional filter is combined as an <code>and</code> boolean operation.';
@@ -1296,13 +1308,24 @@ function gui() {
 
  
     /**
-     * Parse GUI options and generate all DOM elements
+     * Parse GUI options and generate the remaining
+     * tabs and content by calling plotTypeChange();
      */
     function populateGUI(options) {
 
         addTab(setupTab, 'Setup', true);
-        generateFormSelect(setupTab, {values:plotTypes(), accessor:plotTypesID.replace('#',''), label:"Plot type"})
-        d3.select(plotTypesID).on('change', plotTypeChange);
+
+        // add instructions
+        var note = 'Choose the type of plot to be rendered along with the proper data for each axis.';
+        d3.select(setupTab).append('div')
+            .attr('class','form-group col-sm-12')
+            .style('margin-bottom',0)
+            .append('p')
+            .html(note);
+
+        var select = generateFormSelect(setupTab, {values:plotTypes(), accessor:plotTypesID.replace('#',''), label:"Plot type"})
+        select.on('change', plotTypeChange);
+
 
         plotTypeChange(); // fire to select first plot type
     }

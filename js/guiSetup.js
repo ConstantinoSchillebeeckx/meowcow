@@ -2,7 +2,7 @@
 var guiSetup = {
     plotTypes: {
         distroPlotChart: { // must be a named NVD3 plot type e.g. scatterChart
-            label: 'distro plot',
+            label: 'Distribution',
             allowFacets: true,
             //parseData: function(d) { return d.map(function(e) { return e.Study }); },
             parseData: false,
