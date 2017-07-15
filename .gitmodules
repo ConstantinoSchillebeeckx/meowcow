@@ -22,3 +22,6 @@
 [submodule "lib/bootstrap-select"]
 	path = lib/bootstrap-select
 	url = https://github.com/silviomoreto/bootstrap-select.git
+[submodule "lib/bootstrap-datetimepicker"]
+	path = lib/bootstrap-datetimepicker
+	url = https://github.com/Eonasdan/bootstrap-datetimepicker.git

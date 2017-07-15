@@ -243,10 +243,10 @@ function gui() {
      * and plot filters
      */
     function plotTypeChange() {
-        setupPlotBasics();
-        setupPlotFacets();
-        setupPlotOptions();
-        setupPlotFilters();
+        setupPlotBasics(setupTab);
+        setupPlotFacets(facetsTab);
+        setupPlotOptions(optionsTab);
+        setupPlotFilters(filtersTab);
         jQuery(setupTab + 'Tab a').tab('show'); // show setup tab
     }
 
@@ -254,8 +254,12 @@ function gui() {
     /**
      * called on each plot type change, shows the proper x,y,z,
      * select options that will define the plots axes
+     *
+     * @param {str} tabID - ID for tab into which to add DOM
+     *   elements (e.g. '#setupTab')
+     *
      */
-    function setupPlotBasics() {
+    function setupPlotBasics(tabID) {
 
         var availableAxes = getAvailableAxes();
 
@@ -266,7 +270,7 @@ function gui() {
                 var label = "name" in axisSetup ? axisSetup.name : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
                 var addOption = d == 'z' ? {'None':null} : false;
-                generateFormSelect(setupTab, {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:addOption});
+                generateFormSelect(tabID, {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:addOption});
             }
         });
     }
@@ -276,18 +280,22 @@ function gui() {
      * for the requested plot type based on the defined plot
      * options and whether allowFacets = true, if false
      * the row will be hidden
+     *
+     * @param {str} tabID - ID for tab into which to add DOM
+     *   elements (e.g. '#setupTab')
+     *
      */
-    function setupPlotFacets() {
+    function setupPlotFacets(tabID) {
 
         if (getAllowFacets()) {
 
             // add tab and container
-            addTab(facetsTab, 'Facets');
+            addTab(tabID, 'Facets');
 
             // add instructions
             var note = 'Facets form a matrix of panels defined by row and column facetting variables; it is used to draw plots';
             note += ' with multiple axes where each axes shows the same relationship conditioned on different levels of some variable.';
-            d3.select(facetsTab).append('div')
+            d3.select(tabID).append('div')
                 .attr('class','form-group col-sm-12')
                 .style('margin-bottom',0)
                 .append('p')
@@ -295,16 +303,16 @@ function gui() {
 
             ['horizontal','vertical'].forEach(function(d) {
                 var cols = getCols('ordinal');
-                var select = generateFormSelect(facetsTab, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
+                var select = generateFormSelect(tabID, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
                 select.on('change',function() { showButton('#facetsBtn') }); // activate reset button
             });
 
-            var input = generateFormTextInput(facetsTab, {accessor:'colWrap', label:'Column wrap', type:'number'});
+            var input = generateFormTextInput(tabID, {accessor:'colWrap', label:'Column wrap', type:'number'});
             input.on('change',function() { showButton('#facetsBtn') }); // activate reset button
 
             // filter reset button
             // initially hide it
-            d3.select(facetsTab)
+            d3.select(tabID)
                 .append('div')
                 .attr('class','form-group col-sm-2 col-sm-offset-10')
                 .style('margin-bottom',0)
@@ -316,7 +324,7 @@ function gui() {
                 .on('click', resetFacets)
                 .text('Reset filters');
         } else {
-            d3.select(facetsTab).style('display','hidden');
+            d3.select(tabID).style('display','hidden');
         }
     }
 
@@ -324,17 +332,21 @@ function gui() {
      * called on each plot type change, shows the proper inputs
      * for the requested plot type based on the defined plot
      * options.
+     *
+     * @param {str} tabID - ID for tab into which to add DOM
+     *   elements (e.g. '#setupTab')
+     *
      */
-    function setupPlotOptions() {
+    function setupPlotOptions(tabID) {
         var plotOptions = getPlotOptions();
         if (plotOptions) {
 
             // add tab and container
-            addTab(optionsTab, 'Options');
+            addTab(tabID, 'Options');
 
             // add instructions
             var note = 'Use the inputs below to adjust options of the plot.';
-            d3.select(optionsTab).append('div')
+            d3.select(tabID).append('div')
                 .attr('class','form-group col-sm-10')
                 .style('margin-bottom',0)
                 .append('p')
@@ -343,23 +355,23 @@ function gui() {
             plotOptions.forEach(function(d) {
 
                 if (d.type == 'select') {
-                    generateFormSelect(optionsTab, d);
+                    generateFormSelect(tabID, d);
                 } else if (d.type == 'toggle') {
-                    generateFormToggle(optionsTab, d); // TODO width of toggle not being calculated - it's due to the tab-pane class I think.
+                    generateFormToggle(tabID, d); // TODO width of toggle not being calculated - it's due to the tab-pane class I think.
                 } else if (d.type == 'slider') {
-                    generateFormSlider(optionsTab, d);
+                    generateFormSlider(tabID, d);
                 } else if (d.type == 'text' || d.type == 'number') {
-                    generateFormTextInput(optionsTab, d)
+                    generateFormTextInput(tabID, d)
                 }
 
             })
 
 
         } else {
-            d3.select(optionsTab).style('display','hidden');
+            d3.select(tabID).style('display','hidden');
         }
 
-        addClearFix(optionsTab);
+        addClearFix(tabID);
     }
 
     /**
@@ -419,8 +431,12 @@ function gui() {
      * filter the loaded data - the global 'unique' is
      * required in order to properly set the limits for
      * each of the filters.
+     *
+     * @param {str} tabID - ID for tab into which to add DOM
+     *   elements (e.g. '#setupTab')
+     *
      */
-    function setupPlotFilters() {
+    function setupPlotFilters(tabID) {
 
         var slider, select;
 
@@ -428,13 +444,13 @@ function gui() {
         if (typeof unique !== 'undefined') {
 
             // add tab and container
-            addTab(filtersTab, 'Filters');
+            addTab(tabID, 'Filters');
 
             // add instructions
             var note = 'Use the inputs below to filter the plotted data.';
             note += '<br><span class="label label-default">NOTE</span> ';
             note += 'each additional filter is combined as an <code>and</code> boolean operation.';
-            d3.select(filtersTab).append('div')
+            d3.select(tabID).append('div')
                 .attr('class','form-group col-sm-10')
                 .style('margin-bottom',0)
                 .append('p')
@@ -442,7 +458,7 @@ function gui() {
 
             // filter reset button
             // initially hide it
-            d3.select(filtersTab)
+            d3.select(tabID)
                 .append('div')
                 .attr('class','form-group col-sm-2')
                 .style('margin-bottom',0)
@@ -477,15 +493,15 @@ function gui() {
                         format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + parseFloat(d[1]).toFixed(2) + ']'; };
                     }
                     var opts =  {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format}
-                    slider = generateFormSlider(filtersTab, opts);
+                    slider = generateFormSlider(tabID, opts);
                     slider.noUiSlider.on('start',function() { showButton('#resetBtn') }); // activate reset button
 
                 } else if (colType == 'str') { // if categorical, render a select
                     var opts = {values:colVals, accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', addOption:'All', multiple:true};
-                    select = generateFormSelect(filtersTab, opts); // TODO this will potentially generate a select with a ton of options ...
+                    select = generateFormSelect(tabID, opts); // TODO this will potentially generate a select with a ton of options ...
                     select.on('input',function() { showButton('#restBtn') }); // activate reset button
                 } else if (colType == 'datetime') {
-                    // TODO
+                    generateDateTimeInput(tabID, opts);
                 }
             }
    
@@ -1201,6 +1217,38 @@ function gui() {
     }
 
 
+    /**
+     * Generate a datetime input picker
+     * https://github.com/Eonasdan/bootstrap-datetimepicker
+     */
+    function generateDateTimeInput() {
+        if (typeof opts.addOption === 'undefined') opts.addOption = false;
+        if (typeof opts.domClass === 'undefined' || opts.domClass == false) opts.domClass = 'col-sm-4';
+        var id = opts.accessor
+        opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
+
+        var formGroup = inputHeader(selector, opts);
+
+        var inputGroup = formGroup.append('div')
+            .attr('class','input-group date')
+            .attr('id',id+'DateTime');
+
+        inputGroup.append('input')
+            .attr('type','text')
+            .attr('class','form-control')
+            .attr('id',id)
+            .attr('name',id);
+        
+        inputGroup.append('span')
+            .attr('class','input-group-addon')
+            .append('i')
+            .attr('class','fa fa-calendar')
+            .attr('aria-hidden',true);
+
+        jQuery('#'+id+'DateTime').datetimepicker(); // activate
+
+        return inputGroup;
+    }
 
 
     /**
@@ -1379,6 +1427,7 @@ function gui() {
         // everything looks good, let's render!
         // change render button to spinner
         jQuery('#renderBtn').html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
+        jQuery('.collapse').collapse() // collapse GUI
 
         // filter data if needed
         if (dataFilterOn()) data = filterData(data);
