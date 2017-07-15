@@ -419,7 +419,8 @@ function gui() {
             addTab(filtersTab, 'Filters');
 
             // add filter notes
-            var note = '<span class="label label-default">NOTE</span> ';
+            var note = 'Use the inputs below to filter the plotted data.';
+            note += '<br><span class="label label-default">NOTE</span> ';
             note += 'each additional filter is combined as an <code>and</code> boolean operation.';
             d3.select(filtersTab).append('div')
                 .attr('class','form-group col-sm-10')
@@ -441,10 +442,12 @@ function gui() {
                 .on('click', resetFilters)
                 .text('Reset filters');
 
+            // generate an input for each of the columns in the loaded dataset
             for (var col in colTypes) {
                 var colType = colTypes[col]
                 var colVals = unique[col];
-                if (colType == 'int' || colType == 'float') {
+
+                if (colType == 'int' || colType == 'float') { // if a number, render a slider
                     colVals = d3.extent(unique[col]);
                     var sliderOptions = {
                         start: [colVals[0], colVals[1]],
@@ -461,16 +464,19 @@ function gui() {
                     } else if (colType == 'float') {
                         format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + parseFloat(d[1]).toFixed(2) + ']'; };
                     }
-                    slider = generateFormSlider(filtersTab, {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format});
+                    var opts =  {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format}
+                    slider = generateFormSlider(filtersTab, opts);
                     slider.noUiSlider.on('start',function() { showButton('#resetBtn') }); // activate reset button
-                } else if (colType == 'str') {
-                    select = generateFormSelect(filtersTab, {values:colVals, accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', addOption:'All'}); // TODO this will potentially generate a select with a ton of options ...
+
+                } else if (colType == 'str') { // if categorical, render a select
+                    var opts = {values:colVals, accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', addOption:'All', multiple:true};
+                    select = generateFormSelect(filtersTab, opts); // TODO this will potentially generate a select with a ton of options ...
                     select.on('input',function() { showButton('#restBtn') }); // activate reset button
                 } else if (colType == 'datetime') {
+                    // TODO
                 }
             }
    
-
         }
     }
 
@@ -1204,6 +1210,7 @@ function gui() {
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
      * @key {str/obj} addOption - (optional, default=False) whether to prepend an additional option
      *  in the select list, allows for things like 'All' or 'None' - note this will be the first option
+     * @key {bool} multiple - (optional, default=False) whether to allow multiple selections
      *
      * @return select DOM
      *
@@ -1217,10 +1224,21 @@ function gui() {
 
         var formGroup = inputHeader(selector, opts);
 
+        var numOptions = Array.isArray(opts.values) ? opts.values.length : Object.keys(opts.values).length;
+
         var select = formGroup.append('select')
-            .attr('class','form-control')
+            .attr('class','form-control selectpicker')
             .attr('id',id)
             .attr('name',id)
+
+        if (opts.multiple) select.attr('multiple','')
+
+        // if many options present, limit viewable to 10
+        // and add the searchbox
+        if (numOptions >= 10) {
+            select.attr('data-live-search',numOptions >= 10)
+                .attr('data-size',10);
+        }
 
         select.selectAll('option')
             .data(Array.isArray(opts.values) ? opts.values : Object.values(opts.values)).enter()

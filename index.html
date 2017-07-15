@@ -15,6 +15,7 @@
         <link rel="stylesheet" type="text/css" href="lib/nvd3/build/nv.d3.min.css" />
         <link rel="stylesheet" type="text/css" href="lib/bootstrap-toggle/css/bootstrap-toggle.min.css" />
         <link rel="stylesheet" type="text/css" href="lib/noUiSlider/distribute/nouislider.min.css" />
+        <link rel="stylesheet" type="text/css" href="lib/bootstrap-select/dist/css/bootstrap-select.min.css" /> 
         <link rel="stylesheet" type="text/css" href="css/styles.css" />
  
 
@@ -27,6 +28,7 @@
         <script src="lib/bootstrap-toggle/js/bootstrap-toggle.min.js"></script>
         <script src="lib/noUiSlider/distribute/nouislider.min.js"></script>
         <script src="lib/PapaParse/papaparse.min.js"></script>
+        <script src="lib/bootstrap-select/dist/js/bootstrap-select.min.js"></script> 
         <script src="https://use.fontawesome.com/140d2b5ece.js"></script>
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
         <script src="js/guiSetup.js"></script>
@@ -52,7 +54,7 @@
             moo.canvas = '#canvas';
             moo.data = inputDat; //convertToJSON(inputDat, colTypes);
             moo.ignoreCol = ['_UID'];
-            moo.colTypes = {Subject: 'str'},
+            moo.colTypes = {subject: 'str'},
             moo.init();
 
         });

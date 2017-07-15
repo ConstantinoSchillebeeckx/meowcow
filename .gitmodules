@@ -19,3 +19,6 @@
 [submodule "lib/PapaParse"]
 	path = lib/PapaParse
 	url = https://github.com/mholt/PapaParse.git
+[submodule "lib/bootstrap-select"]
+	path = lib/bootstrap-select
+	url = https://github.com/silviomoreto/bootstrap-select.git
