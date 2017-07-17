@@ -25,3 +25,6 @@
 [submodule "lib/bootstrap-datetimepicker"]
 	path = lib/bootstrap-datetimepicker
 	url = https://github.com/Eonasdan/bootstrap-datetimepicker.git
+[submodule "lib/moment"]
+	path = lib/moment
+	url = https://github.com/moment/moment.git

@@ -16,7 +16,7 @@ var guiSetup = {
                     accessor: 'value', 
                 },
                 z : {
-                    name: 'Color group',
+                    label: 'Color group',
                     type: 'ordinal',
                 },
             },

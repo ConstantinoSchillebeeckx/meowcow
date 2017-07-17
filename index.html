@@ -15,6 +15,7 @@
         <link rel="stylesheet" type="text/css" href="lib/nvd3/build/nv.d3.min.css" />
         <link rel="stylesheet" type="text/css" href="lib/bootstrap-toggle/css/bootstrap-toggle.min.css" />
         <link rel="stylesheet" type="text/css" href="lib/noUiSlider/distribute/nouislider.min.css" />
+        <link rel="stylesheet" type="text/css" href="lib/bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css" /> 
         <link rel="stylesheet" type="text/css" href="lib/bootstrap-select/dist/css/bootstrap-select.min.css" /> 
         <link rel="stylesheet" type="text/css" href="css/styles.css" />
  
@@ -23,13 +24,15 @@
         <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js" integrity="sha256-dsOXGNHAo/syFnazt+KTBsCQeRmlcW1XKL0bCK4Baec=" crossorigin="anonymous"></script> 
-        <script src="lib/nvd3/build/nv.d3.js"></script>
+        <script src="https://use.fontawesome.com/140d2b5ece.js"></script>
         <script src="https://cdn.rawgit.com/Kcnarf/d3-beeswarm/fbda9b54/build/d3-beeswarm.min.js"></script>
+        <script src="lib/nvd3/build/nv.d3.js"></script>
         <script src="lib/bootstrap-toggle/js/bootstrap-toggle.min.js"></script>
         <script src="lib/noUiSlider/distribute/nouislider.min.js"></script>
         <script src="lib/PapaParse/papaparse.min.js"></script>
+        <script src="lib/moment/moment.js"></script>
+        <script src="lib/bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js"></script> 
         <script src="lib/bootstrap-select/dist/js/bootstrap-select.min.js"></script> 
-        <script src="https://use.fontawesome.com/140d2b5ece.js"></script>
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
         <script src="js/guiSetup.js"></script>
         <script src="js/main.js"></script>
@@ -54,7 +57,7 @@
             moo.canvas = '#canvas';
             moo.data = inputDat; //convertToJSON(inputDat, colTypes);
             moo.ignoreCol = ['_UID'];
-            moo.colTypes = {subject: 'str'},
+            moo.colTypes = {Subject: 'str'},
             moo.init();
 
         });

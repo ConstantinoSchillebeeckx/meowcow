@@ -267,7 +267,7 @@ function gui() {
             if (availableAxes.indexOf(d) !== -1) {
                 var axisSetup = getAxisSetup(d);
                 var cols = getCols(axisSetup.type);
-                var label = "name" in axisSetup ? axisSetup.name : d.toUpperCase()+"-axis";
+                var label = "label" in axisSetup ? axisSetup.label : d.toUpperCase()+"-axis";
                 var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
                 var addOption = d == 'z' ? {'None':null} : false;
                 generateFormSelect(tabID, {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:addOption});
@@ -470,10 +470,13 @@ function gui() {
                 .on('click', resetFilters)
                 .text('Reset filters');
 
+
             // generate an input for each of the columns in the loaded dataset
             for (var col in colTypes) {
                 var colType = colTypes[col]
                 var colVals = unique[col];
+
+                console.log(col, colType)
 
                 if (colType == 'int' || colType == 'float') { // if a number, render a slider
                     colVals = d3.extent(unique[col]);
@@ -501,11 +504,14 @@ function gui() {
                     select = generateFormSelect(tabID, opts); // TODO this will potentially generate a select with a ton of options ...
                     select.on('input',function() { showButton('#restBtn') }); // activate reset button
                 } else if (colType == 'datetime') {
+                    var opts = {od:col+'DateTime', label:col, type:colType, range:true};
                     generateDateTimeInput(tabID, opts);
                 }
             }
    
         }
+
+        addClearFix(tabID);
     }
 
     /**
@@ -684,8 +690,6 @@ function gui() {
         colNames.forEach(function(d,i) {
             if (ignoreCol.indexOf(d) == -1) colMap[d] = getDatType(colVals[i]);
         })
-
-        
 
     
         // check each row for the data type
@@ -1220,34 +1224,73 @@ function gui() {
     /**
      * Generate a datetime input picker
      * https://github.com/Eonasdan/bootstrap-datetimepicker
+     *
+     * TODO
      */
-    function generateDateTimeInput() {
+    function generateDateTimeInput(selector, opts) {
         if (typeof opts.addOption === 'undefined') opts.addOption = false;
         if (typeof opts.domClass === 'undefined' || opts.domClass == false) opts.domClass = 'col-sm-4';
         var id = opts.accessor
         opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
 
-        var formGroup = inputHeader(selector, opts);
+        var formGroup = inputHeader(selector, opts); // TODO in case of opts.range we need to show pickers next to one another (right now they are on top of one another)
 
-        var inputGroup = formGroup.append('div')
+        var pickerDT = buildDateTimePicker(formGroup, id);
+
+        jQuery('#'+id+'DateTime').datetimepicker({
+            format: opts.type == 'datetime' ? "YYY-MM-DD h:mm:ss a" : "YYYY-MM-DD", // TODO allow for datetime or date picker
+            showTodayButton: true,
+        }); // activate
+
+        // if date range required, add second picker
+        if (opts.range === true) {
+            var pickerDT2 = buildDateTimePicker(formGroup, id+'2');
+
+            var picker1 = '#'+id+'DateTime';
+            var picker2 = '#'+id+'2DateTime';
+
+            $(picker2).datetimepicker({
+                useCurrent: false //Important! See issue #1075
+            });
+            $(picker1).on("dp.change", function (e) {
+                $(picker2).data("DateTimePicker").minDate(e.date);
+            });
+            $(picker2).on("dp.change", function (e) {
+                $(picker1).data("DateTimePicker").maxDate(e.date);
+            });
+        }
+
+        return pickerDT;
+    }
+
+    /*
+     * generate DOM elements for datetime picker
+     *
+     * @param {dom} formGroup - return of inputHeader();
+     * @param {str} id - ID to give to input, final ID
+     *  will be id +'DateTime'
+     *
+     * @return picker DOM
+     */
+    function buildDateTimePicker(formGroup, id) {
+
+        var picker = formGroup.append('div')
             .attr('class','input-group date')
             .attr('id',id+'DateTime');
 
-        inputGroup.append('input')
+        picker.append('input')
             .attr('type','text')
             .attr('class','form-control')
             .attr('id',id)
             .attr('name',id);
         
-        inputGroup.append('span')
+        picker.append('span')
             .attr('class','input-group-addon')
             .append('i')
             .attr('class','fa fa-calendar')
             .attr('aria-hidden',true);
-
-        jQuery('#'+id+'DateTime').datetimepicker(); // activate
-
-        return inputGroup;
+        
+        return picker
     }
 
 
@@ -1319,6 +1362,11 @@ function gui() {
             }
             jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + id + " option:first").val());
         }
+
+        // selects get set to hidden automatically because tab is
+        // hidden (I think...), so manually show them here to ensure
+        // they are visible.
+        jQuery('#'+id).selectpicker('show');
 
         return select;
 
