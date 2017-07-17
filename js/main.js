@@ -504,7 +504,7 @@ function gui() {
                     select = generateFormSelect(tabID, opts); // TODO this will potentially generate a select with a ton of options ...
                     select.on('input',function() { showButton('#restBtn') }); // activate reset button
                 } else if (colType == 'datetime') {
-                    var opts = {od:col+'DateTime', label:col, type:colType, range:true};
+                    var opts = {values:colVals, accessor:col, label:col, type:colType, range:true};
                     generateDateTimeInput(tabID, opts);
                 }
             }
@@ -1225,7 +1225,14 @@ function gui() {
      * Generate a datetime input picker
      * https://github.com/Eonasdan/bootstrap-datetimepicker
      *
-     * TODO
+     * @param {string} selector - element to which to add form-group (label and select)
+     * @param {obj} opts - options for datetime picker, can contain the following keys:
+     * @key {array} - array of all dates in dataset in ascending order
+     * @key {string} accessor - id/name to give to input
+     * @key {string} label - label text
+     * @key {bool} range - whether datepicker should be formatted as range - this will generate
+     *   two datetime pickers
+     * @key {str} type - type of picker, 'datetime' or 'XXX' TODO
      */
     function generateDateTimeInput(selector, opts) {
         if (typeof opts.addOption === 'undefined') opts.addOption = false;
@@ -1233,20 +1240,34 @@ function gui() {
         var id = opts.accessor
         opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
 
-        var formGroup = inputHeader(selector, opts); // TODO in case of opts.range we need to show pickers next to one another (right now they are on top of one another)
+        // default picker options
+        var pickerOptions = 'options' in opts ? opts.options : {};
+        pickerOptions.showTodayButton = true;
+        pickerOptions.format = opts.type == 'datetime' ? "YYY-MM-DD h:mm:ss a" : "YYYY-MM-DD";
 
-        var pickerDT = buildDateTimePicker(formGroup, id);
+        var formGroup = inputHeader(selector, opts);
 
-        jQuery('#'+id+'DateTime').datetimepicker({
-            format: opts.type == 'datetime' ? "YYY-MM-DD h:mm:ss a" : "YYYY-MM-DD", // TODO allow for datetime or date picker
-            showTodayButton: true,
-        }); // activate
+        // generate another row within formgroup
+        // so we can easily dimension one/two pickers
+        var pickerRow = formGroup.append('div')
+            .attr('class','row')
+            
+        var pickerCol = pickerRow.append('div')
+            .attr('class', function() { return 'datetimepickers ' + (opts.range ? ' col-sm-6' : ' col-sm-12');});
+
+        var pickerDT = buildDateTimePicker(pickerCol, id);
+        var picker1 = '#'+id+'DateTime';
+
+        jQuery(picker1).datetimepicker(pickerOptions); // activate
 
         // if date range required, add second picker
         if (opts.range === true) {
-            var pickerDT2 = buildDateTimePicker(formGroup, id+'2');
 
-            var picker1 = '#'+id+'DateTime';
+            var pickerCol = pickerRow.append('div')
+                .attr('class','col-sm-6 datetimepickers')
+
+            var pickerDT2 = buildDateTimePicker(pickerCol, id+'2');
+
             var picker2 = '#'+id+'2DateTime';
 
             $(picker2).datetimepicker({
@@ -1258,6 +1279,11 @@ function gui() {
             $(picker2).on("dp.change", function (e) {
                 $(picker1).data("DateTimePicker").maxDate(e.date);
             });
+
+            // set placeholders
+            jQuery(picker1 + ' input').attr('placeholder','start')
+            jQuery(picker2 + ' input').attr('placeholder','end')
+
         }
 
         return pickerDT;
