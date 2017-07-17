@@ -33,7 +33,7 @@ span.muted {
     margin: 7px 16px 7px 16px;
 }
 
-.form-group {
+.form-group, .note {
     margin-top: 10px;
 }
 

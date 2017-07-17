@@ -296,7 +296,7 @@ function gui() {
             var note = 'Facets form a matrix of panels defined by row and column facetting variables; it is used to draw plots';
             note += ' with multiple axes where each axes shows the same relationship conditioned on different levels of some variable.';
             d3.select(tabID).append('div')
-                .attr('class','form-group col-sm-12')
+                .attr('class','note col-sm-12')
                 .style('margin-bottom',0)
                 .append('p')
                 .html(note);
@@ -314,7 +314,7 @@ function gui() {
             // initially hide it
             d3.select(tabID)
                 .append('div')
-                .attr('class','form-group col-sm-2 col-sm-offset-10')
+                .attr('class','note col-sm-2 col-sm-offset-10')
                 .style('margin-bottom',0)
                 .append('button')
                 .attr('id','facetsBtn')
@@ -347,7 +347,7 @@ function gui() {
             // add instructions
             var note = 'Use the inputs below to adjust options of the plot.';
             d3.select(tabID).append('div')
-                .attr('class','form-group col-sm-10')
+                .attr('class','note col-sm-10')
                 .style('margin-bottom',0)
                 .append('p')
                 .html(note)
@@ -390,6 +390,7 @@ function gui() {
 
         cols.each(function(i, col) {
             colCount += getBootstrapColWidth(this);
+            console.log(col, colCount)
             
             if (colCount > 12) { // if column count is more than max bootstrap width of 12
                 colCount -= 12;
@@ -451,7 +452,7 @@ function gui() {
             note += '<br><span class="label label-default">NOTE</span> ';
             note += 'each additional filter is combined as an <code>and</code> boolean operation.';
             d3.select(tabID).append('div')
-                .attr('class','form-group col-sm-10')
+                .attr('class','col-sm-10 note')
                 .style('margin-bottom',0)
                 .append('p')
                 .html(note)
@@ -460,7 +461,7 @@ function gui() {
             // initially hide it
             d3.select(tabID)
                 .append('div')
-                .attr('class','form-group col-sm-2')
+                .attr('class','note col-sm-2')
                 .style('margin-bottom',0)
                 .append('button')
                 .attr('id','resetBtn')
@@ -501,11 +502,13 @@ function gui() {
 
                 } else if (colType == 'str') { // if categorical, render a select
                     var opts = {values:colVals, accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', addOption:'All', multiple:true};
-                    select = generateFormSelect(tabID, opts); // TODO this will potentially generate a select with a ton of options ...
+                    select = generateFormSelect(tabID, opts);
                     select.on('input',function() { showButton('#restBtn') }); // activate reset button
                 } else if (colType == 'datetime') {
-                    var opts = {values:colVals, accessor:col, label:col, type:colType, range:true};
+                    var opts = {values:colVals, accessor:col, label:col, type:colType, range:true, domClass:'col-sm-8'};
                     generateDateTimeInput(tabID, opts);
+                    jQuery('#'+col+'DateTime').on('dp.change', function() { showButton('#resetBtn')})
+                    if (opts.range) jQuery('#'+col+'2DateTime').on('dp.change', function() { showButton('#resetBtn')})
                 }
             }
    
@@ -546,13 +549,15 @@ function gui() {
      */
     function resetFilters() {
 
-        // reset sliders
+        // reset sliders and datetime pickers
         for (var col in colTypes) {
             var colType = colTypes[col];
             if (colType == 'int' || colType == 'float') {
                 var slider = d3.select('#'+col+'FilterSliderWrap').node()
                 var colVals = d3.extent(unique[col]);
                 slider.noUiSlider.set(colVals); // TODO use this.options.start instead
+            } else if (colType == 'datetime') {
+                jQuery('#'+col+'DateTime').data("DateTimePicker").date(moment(unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)
             }
         }
 
@@ -1227,7 +1232,7 @@ function gui() {
      *
      * @param {string} selector - element to which to add form-group (label and select)
      * @param {obj} opts - options for datetime picker, can contain the following keys:
-     * @key {array} - array of all dates in dataset in ascending order
+     * @key {array} values - array of all dates in dataset in ascending order
      * @key {string} accessor - id/name to give to input
      * @key {string} label - label text
      * @key {bool} range - whether datepicker should be formatted as range - this will generate
@@ -1243,7 +1248,7 @@ function gui() {
         // default picker options
         var pickerOptions = 'options' in opts ? opts.options : {};
         pickerOptions.showTodayButton = true;
-        pickerOptions.format = opts.type == 'datetime' ? "YYY-MM-DD h:mm:ss a" : "YYYY-MM-DD";
+        pickerOptions.format = opts.type == 'datetime' ? "YYYY-MM-DD h:mm:ss a" : "YYYY-MM-DD";
 
         var formGroup = inputHeader(selector, opts);
 
@@ -1267,23 +1272,28 @@ function gui() {
                 .attr('class','col-sm-6 datetimepickers')
 
             var pickerDT2 = buildDateTimePicker(pickerCol, id+'2');
-
             var picker2 = '#'+id+'2DateTime';
+            jQuery(picker2).datetimepicker(pickerOptions); // activate
 
-            $(picker2).datetimepicker({
+            jQuery(picker2).datetimepicker({
                 useCurrent: false //Important! See issue #1075
             });
-            $(picker1).on("dp.change", function (e) {
-                $(picker2).data("DateTimePicker").minDate(e.date);
+            jQuery(picker1).on("dp.change", function (e) {
+                jQuery(picker2).data("DateTimePicker").minDate(e.date);
+                // TODO if current picker2 date is less than picker1, change picker2 date to picker1
             });
-            $(picker2).on("dp.change", function (e) {
-                $(picker1).data("DateTimePicker").maxDate(e.date);
+            jQuery(picker2).on("dp.change", function (e) {
+                jQuery(picker1).data("DateTimePicker").maxDate(e.date);
+                // TODO if current picker1 date is greater than picker2, change picker1 date to picker2
             });
 
             // set placeholders
             jQuery(picker1 + ' input').attr('placeholder','start')
             jQuery(picker2 + ' input').attr('placeholder','end')
 
+            // set min/max date
+            jQuery(picker1).data("DateTimePicker").date(moment(opts.values[0]));
+            jQuery(picker2).data("DateTimePicker").date(moment(opts.values[opts.values.length - 1]));
         }
 
         return pickerDT;
@@ -1440,7 +1450,7 @@ function gui() {
         // add instructions
         var note = 'Choose the type of plot to be rendered along with the proper data for each axis.';
         d3.select(setupTab).append('div')
-            .attr('class','form-group col-sm-12')
+            .attr('class','col-sm-12 note')
             .style('margin-bottom',0)
             .append('p')
             .html(note);
