@@ -7,7 +7,7 @@ TODO
 */
 
 var chartArray = []; // keep chart objects here so that we can call chart.update();
-var guiFacetCols, guiFacetRows, guiFacetWrap;
+var guiFacetCols, guiFacetRows, guiFacetWrap, guiFacetMinHeight;
 
 function gui() {
     "use strict";
@@ -27,12 +27,15 @@ function gui() {
      */
     this.init = function() {
 
+        // parse data a bit first
+        colTypes = findColumnTypes(data, ignoreCol, colTypes);
+        unique = getAllUnique(data, colTypes);
+
         if (checkIfReady()) {
             buildSkeleton(container)
-            colTypes = findColumnTypes(data, ignoreCol, colTypes);
-            unique = getAllUnique(data, colTypes);
             populateGUI(options);
         }
+
     }
 
 
@@ -178,7 +181,7 @@ function gui() {
         var tmp = {}; 
         for (var value in options.plotTypes) {
             var dat = options.plotTypes[value];
-            var key = 'label' in dat ? dat.label : dat.name;
+            var key = 'label' in dat ? dat.label : value;
             tmp[key] = value;
         }
         return tmp;
@@ -188,7 +191,7 @@ function gui() {
      * Return an array of columns in the loaded dataset
      * that match the requested data type
      *
-     * @param {str} type - type of columns requested, either interval
+     * @param {str} type - type of columns requested, either quantitative
      *   (int, float) or ordinal (str, datetime); if not provided, will return
      *   colTYpes
      *
@@ -196,9 +199,9 @@ function gui() {
      *  - column names that match column type
      *  - obj of available data columns if no type provided
      */
-    var getCols = function(type) { // return colTypes keys that match the given type [interval/ordinal]
+    var getCols = function(type) { // return colTypes keys that match the given type [quantitative/ordinal]
         if (typeof type !== 'undefined') {
-            var filter = type == 'interval' ? ['int','float'] : ['datetime','str'];
+            var filter = type == 'quantitative' ? ['int','float'] : ['datetime','str'];
             return Object.keys(colTypes).filter(function(e) { return filter.indexOf(colTypes[e]) != -1  })
         }
     };
@@ -208,7 +211,12 @@ function gui() {
     }
 
     var getAvailableAxes = function() {
-        return Object.keys(getPlotSettings().setup);
+        var plotSettings = getPlotSettings();
+        if ('setup' in plotSettings) {
+            return Object.keys(getPlotSettings().setup);
+        } else {
+            return false;
+        }
     }
 
     var getPlotSettings = function() {
@@ -262,17 +270,20 @@ function gui() {
     function setupPlotBasics(tabID) {
 
         var availableAxes = getAvailableAxes();
-
-        ['x','y','z'].forEach(function(d) {
-            if (availableAxes.indexOf(d) !== -1) {
-                var axisSetup = getAxisSetup(d);
-                var cols = getCols(axisSetup.type);
-                var label = "label" in axisSetup ? axisSetup.label : d.toUpperCase()+"-axis";
-                var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
-                var addOption = d == 'z' ? {'None':null} : false;
-                generateFormSelect(tabID, {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:addOption});
-            }
-        });
+        
+        if (availableAxes !== false) {
+            ['x','y','z'].forEach(function(d) {
+                if (availableAxes.indexOf(d) !== -1) {
+                    var axisSetup = getAxisSetup(d);
+                    var cols = getCols(axisSetup.type);
+                    var label = "label" in axisSetup ? axisSetup.label : d.toUpperCase()+"-axis";
+                    var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
+                    var addOption = d == 'z' ? {'None':null} : false;
+                    var opts = {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:addOption}
+                    if (typeof cols !== 'undefined') generateFormSelect(tabID, opts);
+                }
+            });
+        }
     }
 
     /**
@@ -303,12 +314,22 @@ function gui() {
 
             ['horizontal','vertical'].forEach(function(d) {
                 var cols = getCols('ordinal');
-                var select = generateFormSelect(tabID, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
+                var select = generateFormSelect(tabID, {domClass: 'col-sm-3', values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
                 select.on('change',function() { showButton('#facetsBtn') }); // activate reset button
             });
 
-            var input = generateFormTextInput(tabID, {accessor:'colWrap', label:'Column wrap', type:'number'});
+            var input = generateFormTextInput(tabID, {accessor:'colWrap', label:'Column wrap', type:'number', domClass: 'col-sm-3',});
             input.on('change',function() { showButton('#facetsBtn') }); // activate reset button
+
+            var opts = {
+                options: {start: 100, range: {'min':100, 'max':300}, step:1, connect: [true, false]},
+                format: function(d) { return '[' + parseInt(d) + 'px]' },
+                accessor:'facetSlider', label:'Min row height', minValueReplace: 'Auto', showValueReplace: true,
+                domClass: 'col-sm-3',
+            }
+            var slider = generateFormSlider(tabID, opts);
+            input.on('change',function() { showButton('#facetsBtn') }); // activate reset button
+    
 
             // filter reset button
             // initially hide it
@@ -390,7 +411,6 @@ function gui() {
 
         cols.each(function(i, col) {
             colCount += getBootstrapColWidth(this);
-            console.log(col, colCount)
             
             if (colCount > 12) { // if column count is more than max bootstrap width of 12
                 colCount -= 12;
@@ -978,6 +998,8 @@ function gui() {
             return false;
         }
 
+        // check for proper setup of options (e.g. js/guiSetup.js)
+
         return true;
     }
 
@@ -1049,6 +1071,7 @@ function gui() {
         var formGroup = inputHeader(selector, opts);
         var minValueReplace = opts.minValueReplace;
         var maxValueReplace = opts.maxValueReplace;
+        var showValueReplace = opts.showValueReplace;
 
         formGroup.append('span')
             .attr('class','muted')
@@ -1060,7 +1083,7 @@ function gui() {
             .node()
 
         // generate slider
-        noUiSlider.create(slider, opts.options);
+        var uiSlider = noUiSlider.create(slider, opts.options);
         var tabName = selector.replace('#','');
         if (!(tabName in sliderValues)) sliderValues[tabName] = {};
 
@@ -1076,11 +1099,10 @@ function gui() {
         sliderValues[tabName][id] = initValue;
 
         // add event listener for slider change
-        slider.noUiSlider.on('slide', function(d) {
+        uiSlider.on('slide', function(d) {
             var sliderVal = this.get();
             var sliderMin = this.options.range.min;
             var sliderMax = this.options.range.max;
-            jQuery('#' + id + 'Val').text(format(sliderVal)); // update displayed value
             var tabName = jQuery('#' + id + 'Val').closest('.tab-pane').attr('id');
 
             // store slider values into gui global
@@ -1100,12 +1122,21 @@ function gui() {
                         sliderValue = convertToNumber(e);
                     }
                 }
-                return sliderValue;
             });
 
+            if (showValueReplace & (this.get() == sliderMin || this.get() == sliderMax)) {
+                jQuery('#' + id + 'Val').text(this.get() == sliderMin ? minValueReplace : maxValueReplace); // update displayed value
+            } else {
+                jQuery('#' + id + 'Val').text(format(this.get())); // update displayed value
+            }
+
+            return sliderValue;
         });
 
-
+        // TODO manually trigger slide event so that min/max value replace gets updated if needed
+        //console.log(uiSlider)
+        //jQuery('#'+id+'Val').trigger('slide')
+        //uiSlider.slide()
         return slider;
     }
 
@@ -1458,7 +1489,6 @@ function gui() {
         var select = generateFormSelect(setupTab, {values:plotTypes(), accessor:plotTypesID.replace('#',''), label:"Plot type"})
         select.on('change', plotTypeChange);
 
-
         plotTypeChange(); // fire to select first plot type
     }
 
@@ -1471,6 +1501,7 @@ function gui() {
     function getFacetCol(d) { return d.plotFacets['vertical-facet'].value; }
     function getFacetWrap(d) { return d.plotFacets.colWrap.value; }
     function dataFilterOn() { return jQuery('#resetBtn').is(':visible'); }
+    function getFacetMinHeight(d) { return d.plotFacets['facetSlider']; }
 
     /**
      * If user specifies to filter data
@@ -1502,7 +1533,12 @@ function gui() {
 
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
-        if (guiFacetCols !== getFacetRow(guiVals) || guiFacetRows !== getFacetCol(guiVals) || guiFacetWrap !== getFacetWrap(guiVals)) jQuery(canvas).empty();
+        if (guiFacetCols !== getFacetRow(guiVals) || 
+            guiFacetRows !== getFacetCol(guiVals) || 
+            guiFacetWrap !== getFacetWrap(guiVals) || 
+            guiFacetMinHeight !== getFacetMinHeight(guiVals)) {
+            jQuery(canvas).empty();
+        }
         jQuery('#warning').empty();
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
@@ -1531,6 +1567,7 @@ function gui() {
         guiFacetCols = getFacetRow(guiVals);
         guiFacetRows = getFacetCol(guiVals);
         guiFacetWrap = getFacetWrap(guiVals);
+        guiFacetMinHeight = getFacetMinHeight(guiVals);
 
         // draw plot in each facet
         var chartCount = 0;

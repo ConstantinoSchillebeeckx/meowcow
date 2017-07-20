@@ -1,8 +1,23 @@
 // setup GUI
 var guiSetup = {
     plotTypes: {
+        scatterChart: {
+            label: 'Scatter',
+            setup: {
+                x: {
+                    type: 'quantitative',
+                    accessor: 'value', 
+                },
+                y: {
+                    type: 'quantitative',
+                    accessor: 'value', 
+                },
+                z: {
+                } 
+            }
+        },
         distroPlotChart: { // must be a named NVD3 plot type e.g. scatterChart
-            label: 'Distribution',
+            label: 'Distribution', // if not provided, will use distroPlotChart
             allowFacets: true,
             //parseData: function(d) { return d.map(function(e) { return e.Study }); },
             parseData: false,
@@ -12,7 +27,7 @@ var guiSetup = {
                     accessor: 'x',
                 },
                 y : {
-                    type: 'interval',
+                    type: 'quantitative',
                     accessor: 'value', 
                 },
                 z : {
@@ -74,6 +89,7 @@ var guiSetup = {
                     options: {start: 0, range: {'min':0, 'max':50}, step:1, connect: [true, false],},
                     format: function(d) { return '[' + parseInt(d) + ']' },
                     minValueReplace: null, // replace slider value with this if slider on minimum (0 in this case)
+                    showValueReplace: false, // show value specified by either minValueReplace/maxValueReplace in GUI
                 }, {
                     accessor: 'observationRadius',
                     label: 'Observation radius',
