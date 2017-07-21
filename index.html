@@ -34,8 +34,9 @@
         <script src="lib/bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js"></script> 
         <script src="lib/bootstrap-select/dist/js/bootstrap-select.min.js"></script> 
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
-        <script src="js/guiSetup.js"></script>
+        <script src="js/config.js"></script>
         <script src="js/main.js"></script>
+        <script src="js/gui.js"></script>
 
 
 
@@ -51,7 +52,17 @@
     <script>
         $(function() {
 
-            var moo = new gui();
+            var moo = meowcow()
+                .container('#guiWrap')
+                .data(inputDat) // inputDat loaded with tall.js
+                .config(guiSetup)
+                .ignoreCol(['_UID'])
+                .colTypes({Subject: 'str'})
+                .run();
+
+
+                
+/*
             moo.options = guiSetup;
             moo.container = "#guiWrap";
             moo.canvas = '#canvas';
@@ -59,6 +70,7 @@
             moo.ignoreCol = ['_UID'];
             moo.colTypes = {Subject: 'str'},
             moo.init();
+*/
 
         });
     </script>

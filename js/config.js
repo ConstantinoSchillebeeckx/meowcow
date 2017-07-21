@@ -33,6 +33,7 @@ var guiSetup = {
                 z : {
                     label: 'Color group',
                     type: 'ordinal',
+                    addOption: {None: false}
                 },
             },
             options: [ // this will populate the 'Options' tab
