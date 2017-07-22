@@ -42,35 +42,18 @@
 
     </head>
 
-
-    <body class='container-fluid'>
-        <div id="guiWrap"></div>
-        <div id="canvas"></div>
-    </body>
-
+    <body class='container-fluid' id='renderHere'></body>
 
     <script>
         $(function() {
 
             var moo = meowcow()
-                .container('#guiWrap')
+                .container('#renderHere')
                 .data(inputDat) // inputDat loaded with tall.js
                 .config(guiSetup)
                 .ignoreCol(['_UID'])
                 .colTypes({Subject: 'str'})
                 .run();
-
-
-                
-/*
-            moo.options = guiSetup;
-            moo.container = "#guiWrap";
-            moo.canvas = '#canvas';
-            moo.data = inputDat; //convertToJSON(inputDat, colTypes);
-            moo.ignoreCol = ['_UID'];
-            moo.colTypes = {Subject: 'str'},
-            moo.init();
-*/
 
         });
     </script>

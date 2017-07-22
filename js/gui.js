@@ -13,7 +13,7 @@ var GUI = (function() {
     //============================================================
     // Public Variables with Default Settings
     //------------------------------------------------------------
-    var container = false,  // DOM into which to render everything
+    var container = false,  // DOM for GUI and plots
         config = {},        // config details for plots
         data = {},          // data to plot
         colTypes = {},      // overwrite column types with these
@@ -34,7 +34,12 @@ var GUI = (function() {
         _filtersTab = 'plotFilter',  // ID for plot filters tab
         _facetResetBtn = 'facetsBtn',
         _filtersResetBtn = 'filtersBtn',
-        _sliderValues = {} // keeps track of all current slider values {tabName: {sliderName: val}, ...}
+        _minRowHeight = 'minRowHeight', // facet min row height slider ID
+        _sliderValues = {}, // keeps track of all current slider values {tabName: {sliderName: val}, ...}
+        _guiFacetCols = false,
+        _guiFacetRows = false,
+        _guiFacetWrap = false,
+        _guiFacetMinHeight = false
 
     //============================================================
     // Public getters & setters
@@ -66,6 +71,72 @@ var GUI = (function() {
     this.init = function() { // initialize GUI
         buildContainers();
         populateGUI();
+        return this;
+    }
+    /**
+     * Call to serializeArray() on the GUI form to return
+     * all the current settings of the GUI. 
+     *
+     * A checked checkbox will return as true, otherwise false
+     *
+     * @return {object} - object of gui values with each tab ID
+     *   as a key, the value of which are the input values. Inner
+     *   object has input id as the key and values are:
+     *   - for select dropdowns, the value is as object of form
+     *     {label: XX, value: XX}. note that for the 'None' options
+     *     the value will both be null
+     *   - for checkboxes, the value will be true/false
+     *   - for sliders the value will be an array of either length
+     *     1 for a single value slider, or 2 for a min/max slider
+     *
+     */
+    this.getGUIvals = function() {
+    
+        var guiVals = {};
+        jQuery('form div.tab-pane').each(function() {
+            var tab = this.id;
+            guiVals[tab] = {};
+
+            // parse select inputs
+            var tmp = jQuery(this).find(':input').serializeArray();
+
+            tmp.forEach(function(d) {
+                var value = d.value;
+                var name = d.name;
+                guiVals[tab][name] = {}
+                guiVals[tab][name]['value'] = (value == '' || value == "None") ? null : convertToNumber(value);
+                guiVals[tab][name]['label'] = jQuery("#" + name + " option:selected").text();
+            });
+
+            // parse checkboxes
+            var checkBoxes = jQuery(this).find('input[type="checkbox"]');
+            if (checkBoxes.length) {
+                checkBoxes.each(function(d) {
+                    guiVals[tab][this.id] = this.checked;
+                })
+            }
+
+            // parse slider values
+            if (tab in _sliderValues) {
+                for (var slider in _sliderValues[tab]) {
+                    guiVals[tab][slider] = _sliderValues[tab][slider];
+                }
+            }
+
+            // set a bool for facets on/off
+            if (tab == _facetsTab) {
+                guiVals[_facetsTab].facetOn = (guiVals[_facetsTab]['col-facet'].value !== null || guiVals[_facetsTab]['row-facet'].value !== null)
+            }
+
+            // set a bool for filters on/off
+            if (tab == _filtersTab) {
+                guiVals[_filtersTab].filterOn = dataFilterOn();
+            }
+        })
+
+
+        return guiVals;
+
     }
 
 
@@ -91,11 +162,17 @@ var GUI = (function() {
         return tmp;
     };
 
+    var getFacetRow = function(d) { return d.plotFacets['row-facet'].value; }
+    var getFacetCol = function(d) { return d.plotFacets['col-facet'].value; }
+    var getFacetWrap = function(d) { return d.plotFacets.colWrap.value; }
+    var dataFilterOn = function() { return jQuery('#'+_filtersResetBtn).is(':visible'); }
+    var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight]; }
     var getPlotConfig = function() { return config.plotTypes[getPlotType()]; }; // get config for currently selected plot
     var getPlotOptions = function(plotType) { return getPlotConfig().options; }; // get options for current plot
     var getPlotType = function() { return jQuery('#'+_plotTypesID).val(); }; // get currently selected plot type
     var getAxisSetup = function(axis) { return getPlotConfig().setup[axis]; };
     var getAllowFacets = function() { return 'allowFacets' in getPlotConfig() ? getPlotConfig().allowFacets : true; }; // bool for whether facets allowed, default true
+
     var getAvailableAxes = function() { 
         var plotType = getPlotType() || Object.keys(config.plotTypes)[0];
         return Object.keys(config.plotTypes[plotType].setup); 
@@ -281,14 +358,23 @@ var GUI = (function() {
             note += ' with multiple axes where each axes shows the same relationship conditioned on different levels of some variable.';
             addTab(_facetsTab, 'Facets', note);
 
-
-            ['horizontal','vertical'].forEach(function(d) {
+            ['col','row'].forEach(function(d) {
                 var cols = getColsByType('ordinal');
-                var select = generateFormSelect(_facetsTab, {values:cols, accessor:d+'-facet', label:(d == 'horizontal') ? 'Columns' : 'Rows', addOption:{'None':''}});
+                var opts = {domClass: 'col-sm-3', values:cols, accessor:d+'-facet', label:(d == 'col') ? 'Columns' : 'Rows', addOption:{'None':''}}
+                var select = generateFormSelect(_facetsTab, opts);
                 select.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
             });
 
-            var input = generateFormTextInput(_facetsTab, {accessor:'colWrap', label:'Column wrap', type:'number'});
+            var input = generateFormTextInput(_facetsTab, {accessor:'colWrap', label:'Column wrap', type:'number', domClass: 'col-sm-3',});
+            input.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
+
+            var opts = {
+                options: {start: 100, range: {'min':100, 'max':300}, step:1, connect: [true, false]},
+                format: function(d) { return '[' + parseInt(d) + 'px]' },
+                accessor:_minRowHeight, label:'Min row height', minValueReplace: 'Auto', showValueReplace: true,
+                domClass: 'col-sm-3',
+            }
+            var slider = generateFormSlider(_facetsTab, opts);
             input.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
 
             // filter reset button
@@ -377,7 +463,6 @@ var GUI = (function() {
 
         cols.each(function(i, col) {
             colCount += getBootstrapColWidth(this);
-            console.log(col, colCount)
             
             if (colCount > 12) { // if column count is more than max bootstrap width of 12
                 colCount -= 12;
@@ -435,8 +520,8 @@ var GUI = (function() {
      * Build the GUI bootstrap panel and the warnings DOM.
      *
      * Will setup all the proper DOM elements for the GUI including
-     * - a bootstrap row (#guiRow) that is set as a full width column
-     * - a bootstrap row (#warningsRow)
+     * a containing bootstrap row (#gui) that includes two full
+     * full width (col-sm-12) columns (#guiPanel & _warningsID)
      *
      * If required data is not present, tabs won't be generated,
      * instead a message is displayed with an upload button that calls
@@ -458,18 +543,14 @@ var GUI = (function() {
     function buildContainers() {
 
         // setup containers
-        var sel = d3.select(container);
+        var guiRow = d3.select(container);
 
-        var guiRow = sel.append("div")
-            .attr("class","row")
-            .attr("id","guiRow");
         var guiCol = guiRow.append("div")
-            .attr("class","col-sm-12");
+            .attr("class","col-sm-12")
+            .attr('id','guiPanel');
 
-        var warningsRow = sel.append("div")
-            .attr("class","row")
-            .attr("id","warningsRow");
-        var warningsCol = warningsRow.append("div")
+        var warningsCol = d3.select(container)
+            .append("div")
             .attr("class","col-sm-12")
             .attr("id",_warningsID);
 
@@ -516,7 +597,110 @@ var GUI = (function() {
             .attr('type','button')
             .text('Render')
             .attr('id',_renderBtnID)
-            .on('click', formSubmit);
+            .on('click', preRender);
+    }
+
+
+    /**
+     * on click event handler for 'Render' button. will check all the user set
+     * GUI values and ensure plots can be rendered. if everything looks ok
+     * the formSubmit function is called, otherwise void is returned.
+     *
+     * will also remove any current plots if needed (only when facet 
+     * options are changed).
+     *
+     */
+    function preRender() {
+
+        // get GUI vals
+        var guiVals = getGUIvals();
+
+        // clear any previously existent plots/warnings
+        // plots are only cleared if the GUI options for facets are changed
+        if (facetOptionsHaveChanged(guiVals)) { jQuery(canvas).empty(); }
+        jQuery('#warning').empty();
+
+        // before rendering anything, let's ensure the selected GUI options make sense to render
+        if (validateGUIsettings(guiVals)) console.log('skipping error'); //return;
+
+        // store current GUI facet options so we can compare for updates
+        _guiFacetCols = getFacetRow(guiVals);
+        _guiFacetRows = getFacetCol(guiVals);
+        _guiFacetWrap = getFacetWrap(guiVals);
+        _guiFacetMinHeight = getFacetMinHeight(guiVals)
+
+        // everything looks good, let's render!
+        formSubmit();
+
+    }
+
+    /**
+     * Return true if facet options have been changed since previous 
+     * render; this is used to reset all the plots/facets for
+     * re-drawing.
+     *
+     * @return - true if facet options have been changed; false
+     *   otherwise.
+     */
+    function facetOptionsHaveChanged(guiVals) {
+        if (_guiFacetCols !== getFacetRow(guiVals) || 
+            _guiFacetRows !== getFacetCol(guiVals) || 
+            _guiFacetWrap !== getFacetWrap(guiVals) || 
+            _guiFacetMinHeight !== getFacetMinHeight(guiVals)) {
+            return true;
+        }
+        return false
+    }
+
+    /**
+     * Check GUI for errors in option choices, if
+     * an error exists, display a warning
+     *
+     * @param {obj} guiVals - return from getGUIvals()
+     *
+     * @return false on error, true on no error
+     */
+     function validateGUIsettings(guiVals) {
+
+        var setupVals = guiVals[_setupTab];
+        var facetVals = guiVals[_facetsTab];
+        var wrapVal = facetVals.colWrap.value;
+
+        if (setupVals['x-axis'].label == setupVals['y-axis'].label) { // ensure x & y axis are different
+            displayWarning("The X-axis field cannot be the same as the Y-axis field, please change one of them!", _warningsID, true);
+            return false;
+        }
+
+        // check that selected plot type is an option in nv.models (should be a key) TODO
+
+        // TODO further checks
+
+        if (facetVals.facetOn || wrapVal > 0) {
+            var hVal = facetVals['col-facet'].value
+            var hLabel = facetVals['col-facet'].label
+            var vVal = facetVals['row-facet'].value
+            var vLabel = facetVals['row-facet'].label
+            var facetRows = (hVal) ? unique[hLabel] : [null];
+            var facetCols = (vVal) ? unique[vLabel] : [null];
+
+            if (hVal === null && vVal === null && wrapVal === null) {
+                displayWarning("In order to use facets, you must at least choose something for <code>Rows</code> or <code>Columns</code>", _warningsID, true);
+                return false;
+            }
+            if (wrapVal > 0 && vVal !== null) {
+                displayWarning("You cannot specify a <code>Rows</code> option when specifying <code>Column wrap</code>.", _warningsID, true);
+                return false;
+            }
+            if (vLabel === hLabel) {
+                displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", _warningsID, true);
+                return false;
+            }
+            if (facetRows.length > 50 || facetCols.length > 50) { // limit how many facets can be rendered
+                displayWarning("Cancelling render because too many facets would be created.", '#warningCol', true);
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -777,7 +961,7 @@ var GUI = (function() {
 
     }
 
- /**
+    /**
      * Generate a noUiSlider range input
      *
      * @param {string} selector - element to which to add form-group (label and select)
@@ -811,6 +995,7 @@ var GUI = (function() {
         var formGroup = inputHeader(selector, opts);
         var minValueReplace = opts.minValueReplace;
         var maxValueReplace = opts.maxValueReplace;
+        var showValueReplace = opts.showValueReplace;
 
         formGroup.append('span')
             .attr('class','muted')
@@ -822,12 +1007,21 @@ var GUI = (function() {
             .node()
 
         // generate slider
-        noUiSlider.create(slider, opts.options);
+        var uiSlider = noUiSlider.create(slider, opts.options);
         var tabName = selector.replace('#','');
+        var initValue = opts.options.start;
         if (!(tabName in _sliderValues)) _sliderValues[tabName] = {};
 
+        // set initial value in title
+        if (showValueReplace && (initValue == opts.options.range.min || initValue == opts.options.range.max)) {
+            jQuery('#' + id + 'Val').text(initValue == opts.options.range.min ? minValueReplace : maxValueReplace); // update displayed value
+        } else {
+            jQuery('#' + id + 'Val').text(format(initValue)); // update displayed value
+        }
+
         // initialize slider value store
-        var initValue = opts.options.start;
+        // TODO all this min/max value replaceing is junky, and the reset button doesn't work on the sliders
+        // need to refactor the code
         if (initValue.length == 2) {
             if (typeof minValueReplace !== 'undefined' && initValue[0] == opts.options.range.min) initValue[0] = minValueReplace;
             if (typeof maxValueReplace !== 'undefined' && initValue[1] == opts.options.range.max) initValue[1] = maxValueReplace;
@@ -838,11 +1032,10 @@ var GUI = (function() {
         _sliderValues[tabName][id] = initValue;
 
         // add event listener for slider change
-        slider.noUiSlider.on('slide', function(d) {
+        uiSlider.on('slide', function(d) {
             var sliderVal = this.get();
             var sliderMin = this.options.range.min;
             var sliderMax = this.options.range.max;
-            jQuery('#' + id + 'Val').text(format(sliderVal)); // update displayed value
             var tabName = jQuery('#' + id + 'Val').closest('.tab-pane').attr('id');
 
             // store slider values into gui global
@@ -865,8 +1058,14 @@ var GUI = (function() {
                 return sliderValue;
             });
 
-        });
+            if (showValueReplace & (this.get() == sliderMin || this.get() == sliderMax)) {
+                jQuery('#' + id + 'Val').text(this.get() == sliderMin ? minValueReplace : maxValueReplace); // update displayed value
+            } else {
+                jQuery('#' + id + 'Val').text(format(this.get())); // update displayed value
+            }
 
+            return sliderValue;
+        });
 
         return slider;
     }
@@ -919,7 +1118,7 @@ var GUI = (function() {
                 var slider = d3.select('#'+tabID).select('#'+col+'FilterSliderWrap').node()
                 if (slider) {
                     var colVals = d3.extent(unique[col]);
-                    slider.noUiSlider.set(colVals); // TODO use this.options.start instead
+                    slider.noUiSlider.set(colVals); // TODO use this.options.start instead - BUG min row height slider not resetting
                 }
             } else if (colType == 'datetime') {
                 jQuery('#'+col+'DateTime').data("DateTimePicker").date(moment(unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)

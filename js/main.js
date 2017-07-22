@@ -1,9 +1,8 @@
 /*
 TODO
-- date picker
-- gui setup validation function (needs to be validated against uploaded data)
-- implement filtering
-- loading in main plot area
+- gui rules set by config file (e.g. some charts could allow x-axis to be the same as the y-axis)
+- data filtering
+- min row height
 */
 
 var meowcow = (function() {
@@ -30,8 +29,11 @@ var meowcow = (function() {
     //============================================================
     // Private variables
     //------------------------------------------------------------
-    var _colTypes,         // automatically detected column types
-        _unique            // obj of unique values for each column
+    var _colTypes,            // automatically detected column types
+        _unique,              // obj of unique values for each column
+        _gui,                 // gui class object
+        _guiWrap='gui',       // ID for GUI DOM
+        _canvasWrap='canvas'  // ID for plot DOM
     
 
 
@@ -60,20 +62,24 @@ var meowcow = (function() {
     }
     this.run = function() {
 
+        // build DOM wraps for GUI and plot area
+        if (jQuery('#'+_guiWrap).length == 0) d3.select(container).append('div').attr('id',_guiWrap).attr('class','row')
+        if (jQuery('#'+_canvasWrap).length == 0) d3.select(container).append('div').attr('id',_canvasWrap)
+
         // prep data
         _colTypes = findColumnTypes(data,ignoreCol,colTypes);
         _unique = getAllUnique(data, _colTypes);
 
         // build gui
-        var gui = GUI()
-            .container(container)
+        _gui = GUI()
+            .container('#'+_guiWrap)
             .data(data)
             .config(config)
             .colTypes(_colTypes)
             .unique(_unique)
             .formSubmit(renderPlot)
             .init();
-    
+   
     }
 
 
@@ -88,49 +94,30 @@ var meowcow = (function() {
      * plots if needed (only when facet options are changed). finally, will also
      * setup all the proper facets if needed and then render the plot in the facet.
      *
-     * expects the following variables to have been set on the main plotting page:
-     * @param data
-     * @param canvas
-     * @param unique
      *
      * @return void
     */
     function renderPlot() {
 
-        // get GUI vals
-        var guiVals = getGUIvals('form');
-
-        // clear any previously existent plots/warnings
-        // plots are only cleared if the GUI options for facets are changed
-        if (guiFacetCols !== getFacetRow(guiVals) || guiFacetRows !== getFacetCol(guiVals) || guiFacetWrap !== getFacetWrap(guiVals)) jQuery(canvas).empty();
-        jQuery('#warning').empty();
-
-        // before rendering anything, let's ensure the selected GUI options make sense to render
-        if (guiWarnings(guiVals)) return;
-        
-        // everything looks good, let's render!
         // change render button to spinner
         jQuery('#renderBtn').html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
         jQuery('.collapse').collapse() // collapse GUI
 
+        var guiVals = _gui.getGUIvals();
+        
         // filter data if needed
-        if (dataFilterOn()) data = filterData(data);
+        if (guiVals.plotFilter.filterOn) data = filterData(data);
 
         // generate facets and group data
-        var facets = setupFacetGrid(canvas, guiVals, data, unique);
+        var facets = setupFacetGrid(guiVals, data);
         var facetRows = Object.keys(facets);
         var facetCols = Object.keys(facets[facetRows[0]]);
 
         var facetVals = guiVals.plotFacets;
-        var hVal = facetVals['horizontal-facet'].value
-        var vVal = facetVals['vertical-facet'].value
-        var hLabel = facetVals['horizontal-facet'].label
-        var vLabel = facetVals['vertical-facet'].label
-
-        // store current GUI facet options so we can compare for updates
-        guiFacetCols = getFacetRow(guiVals);
-        guiFacetRows = getFacetCol(guiVals);
-        guiFacetWrap = getFacetWrap(guiVals);
+        var hVal = facetVals['col-facet'].value;
+        var vVal = facetVals['row-facet'].value;
+        var hLabel = facetVals['col-facet'].label;
+        var vLabel = facetVals['row-facet'].label;
 
         // draw plot in each facet
         var chartCount = 0;
@@ -163,6 +150,98 @@ var meowcow = (function() {
 
         
         jQuery('#renderBtn').html('Update').prop('disabled', false); // TODO wait until everything finishes rendering ... async!
+    }
+
+    /**
+     * Once all GUI options and data are set, we can
+     * render the plot.
+     *
+     * @param {obj} dat - data for each facet
+     * @param {string} sel - selector for facet into which to render plot
+     * @param {obj} formVals - GUI option values
+     * @param {string} title - [optional] title for plot, should be null if no title
+     *
+     * @return void
+     */
+    function populateChart(dat, sel, formVals, title, chartCount) {
+
+        return;
+
+        var plotType = formVals.plotSetup.plotTypes.value;
+        var plotOptions = options.plotTypes[plotType]; // lookup options for selected plot type
+        var datReady = dat;
+
+        // nvd3 expects SVG to exist already
+        d3.select(sel).append('svg');
+
+        // parse data if needed before plotting
+        var parseFunc = plotOptions.parseData;
+        if (typeof parseFunc === "function") {
+            datReady = parseFunc(dat);
+        }
+
+
+        // create the chart
+        nv.addGraph(function() {
+            console.log('Rendering ' + plotType);
+            var chart;
+
+            // load previous chart if it exists
+            if (typeof chartArray[chartCount] !== 'undefined') {
+                chart = chartArray[chartCount];
+            } else {
+                chart = nv.models[plotType]();
+            }
+
+            // setup data accessors for each axis
+            // we will need the name of the accessor function to be called on the chart
+            // as well as the actual accessor function (which is defined by the GUI)
+            console.log('Setting options');
+            ['x','y','z'].forEach(function(d) {
+                var accessorName = plotOptions.setup[d].accessor;
+                var accessorAttr = formVals.plotSetup[d+'-axis'].value; // get the GUI value for the given chart axis option
+                if (accessorName) {
+                    console.log(accessorName + ':' + accessorAttr);
+                    var accessorFunc = function(d) { return d[accessorAttr] };
+                    chart[accessorName](accessorFunc);
+                }
+            });
+
+            // set chart options
+            plotOptions.options.forEach(function(d) {
+                var optionName = d.accessor;
+                var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
+
+                // if GUI option was an array (for a single handle slider) grab the only element
+                if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
+
+                // if GUI option was a select input type, data comes in as an object, grab just the values
+                if (typeof optionValue === 'object' && optionValue != null) optionValue = optionValue.value;
+
+                // convert bool string into bool
+                optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
+
+                console.log(optionName + ':' + optionValue);
+                chart[optionName](optionValue)
+            })
+
+            // set title
+            if (title !== null && title) chart.title(title);
+
+            //formatAxisTitle(chart, guiVals);
+            //formatTooltip(chart, guiVals);
+
+            d3.select(sel + ' svg')
+                .datum(datReady)
+                .call(chart);
+
+            nv.utils.windowResize(chart.update);
+
+            chartArray[chartCount] = chart;
+
+            return chart;
+        });
+
     }
 
     /**
@@ -274,6 +353,141 @@ var meowcow = (function() {
     }
 
     /**
+     * Generate the proper facet grid setup based on GUI options
+     * and group data.
+     *
+     * Will generate the proper number of rows as well as columns
+     * within those rows; each of these facets will house a plot.
+     *
+     * Each row is setup as a boostrap row with an additional
+     * 'facetRow' class; each column has a 'facet' class.
+     *
+     * @param {obj} guiVals - return from getGUIvals()
+     * @param {obj} dat - return from convertToJSON()
+     *
+     * @return obj: grouped data {row: col: {dat}}
+     *
+     * Depending on the input data, all groupings may not exist; it should
+     * not be assumed that all groupings will have data for it. Furthermore,
+     * even if only row or col is specified, the return format is always
+     * {row: col: {dat}} - for example, if no row specified dat will return with
+     * key 'row0'.
+     *
+     */
+    function setupFacetGrid(guiVals, dat) {
+
+        var facetRow, facetCol, colDat, colWrap, plotDom;
+        var rowDat = ['row0'];
+        var colDat = ['col0'];
+        var numRows = rowDat.length;
+        var numCols = colDat.length;
+        var aspectRatio = 2.0; // width to height ratio
+        var plotDom = d3.select('#' + _canvasWrap);
+        var facetVals = guiVals.plotFacets;
+        var minRowHeight = guiVals.plotFacets.minRowHeight[0];
+
+        if (facetVals.facetOn) {  // if plotting with facets
+            var hVal = facetVals['col-facet'].value
+            var vVal = facetVals['row-facet'].value
+            if (vVal) { // if row facet specified
+                facetRow = facetVals['row-facet'].label;
+                rowDat = _unique[facetRow];
+            }
+            if (hVal) { // if col facet specified
+                facetCol = facetVals['col-facet'].label
+                colDat = _unique[facetCol];
+            }
+            colWrap = (facetVals.colWrap) ? facetVals.colWrap.value : false;
+
+            numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
+            numCols = (colWrap) ? colWrap : colDat.length;
+        }
+
+
+        // calculate width/height of each facet 
+        var colWidth = jQuery('#guiPanel').width() / numCols;
+        console.log(jQuery('#'+ _guiWrap).width());
+        var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / aspectRatio;
+
+        // generate DOM elements
+        var facetCount = 0;
+        for (var i = 0; i < numRows; i++) {
+
+            var row = plotDom.append('div')
+                .attr('class', 'facetRow')
+                .attr('id', 'row_' + i);
+
+            for (var j = 0; j < numCols; j++) {
+                row.append('div')
+                    .attr('class', facetCount%2==0 ? 'facet fill' : 'facet')
+                    .attr('id','facet_'+facetCount)
+                    .style({height: rowHeight + 'px', width: colWidth + 'px'})
+                facetCount++;
+            }
+
+            // this will prevent the final row from filling with facets
+            if (colWrap && i == (numRows - 2) ) numCols = (colDat.length % colWrap) ? colDat.length % colWrap : colWrap; 
+
+        }
+
+
+        // group the data
+        // first group by row, then by column
+        // into form {row_groups: {col_groups: {dat} } }
+        // if row & col combination of data is missing, undefined will be the val
+        if (facetRow && facetCol) {
+            var nested = d3.nest()
+                .key(function(d) { return d[facetRow] })
+                .key(function(d) { return d[facetCol] })
+                .map(dat);
+
+            // set undefined for missing data
+            for (var i = 0; i < rowDat.length; i++) {
+                if (!(rowDat[i] in nested)) nested[rowDat[i]] = {};
+                for (var j = 0; j < colDat.length; j++) {
+                    if (!(colDat[j] in nested[rowDat[i]])) nested[rowDat[i]][colDat[j]] = undefined;
+                }
+            }
+
+        } else if (facetRow || facetCol) {
+            var tmp = d3.nest()
+                .key(function(d) { return (facetRow) ? d[facetRow] : d[facetCol] })
+                .map(dat);
+
+            var nested = {};
+            if (facetRow) { // if grouping in rows
+                for (var i = 0; i < rowDat.length; i++) {
+                    var rowGroup = rowDat[i];
+                    var groupDat = tmp[rowGroup];
+                    nested[rowGroup] = {col0: groupDat};
+                }        
+            } else { // if grouping in cols
+                if (colWrap) {
+                    var i = 0;
+
+                    for (var j = 0; j < colDat.length; j++) {
+                        var rowI = 'row' + i;
+                        if (!(rowI in nested)) {
+                            nested[rowI] = {};
+                        }
+                        var colI = colDat[j];
+                        nested[rowI][colI] = tmp[colI];
+
+                        if ((j + 1) % colWrap == 0) i++;
+                    }
+                } else {
+                    nested = {row0: tmp};
+                }
+            }
+        } else {
+            var nested = {row0: {col0: dat} };
+        }
+
+        return nested;
+
+    }
+
+    /**
      * Given a variable, return type of datum,
      * one of either int, float, str, or datetime.
      */
@@ -343,6 +557,6 @@ function displayWarning(message, selector=false, error=false) {
     tmp += '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
     tmp += message;
     tmp += '</div>';
-    d3.select(selector).html(tmp);
+    d3.select('#'+selector).html(tmp);
 }
 

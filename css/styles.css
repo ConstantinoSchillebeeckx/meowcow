@@ -1,4 +1,4 @@
-#guiWrap {
+#gui {
     margin-top:10px;
 }
 
@@ -7,7 +7,7 @@
     
 }
 
-.facet:nth-child(odd) {
+.facet.fill {
     background-color: #EFF3F3;
 }
 
@@ -38,10 +38,10 @@ span.muted {
 }
 
 html, body, svg {
-margin: 0px;
-padding: 0px;
-height: 100%;
-width: 100%;
+    margin: 0px;
+    padding: 0px;
+    height: 100%;
+    width: 100%;
 }
 
 /* Plot specific */
