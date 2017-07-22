@@ -15,26 +15,30 @@ var GUI = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM for GUI and plots
         config = {},        // config details for plots
-        data = {},          // data to plot
+        data = false,       // data to plot
         colTypes = {},      // overwrite column types with these
         formSubmit,         // form submit function for render
-        unique = []         // columns to ignore in data
+        unique = [],        // columns to ignore in data
+        ignoreCol = false   // columns to ignore in data
 
 
     //============================================================
     // Private variables
     //------------------------------------------------------------
-    var _guiID = 'guiBody',          // ID to give to gui body
-        _warningsID = 'warnings',    // ID to give to warnings DOM
-        _renderBtnID = 'renderBtn',  // ID for render button
-        _plotTypesID = 'plotTypes',  // ID for plot types tab
-        _setupTab = 'plotSetup',     // ID for plot setup tab
-        _facetsTab = 'plotFacets',   // ID for plot facets tab
-        _optionsTab = 'plotOptions', // ID for plot options tab
-        _filtersTab = 'plotFilter',  // ID for plot filters tab
-        _facetResetBtn = 'facetsBtn',
-        _filtersResetBtn = 'filtersBtn',
-        _minRowHeight = 'minRowHeight', // facet min row height slider ID
+    var _colTypes,             // automatically detected column types
+        _unique,               // obj of unique values for each column
+        _guiID = 'guiBody',              // ID to give to gui body
+        _warningsID = 'warnings',        // ID to give to warnings DOM
+        _renderBtnID = 'renderBtn',      // ID for render button
+        _plotTypesID = 'plotTypes',      // ID for plot types tab
+        _setupTab = 'plotSetup',         // ID for plot setup tab
+        _facetsTab = 'plotFacets',       // ID for plot facets tab
+        _optionsTab = 'plotOptions',     // ID for plot options tab
+        _filtersTab = 'plotFilter',      // ID for plot filters tab
+        _facetResetBtn = 'facetsBtn',    // ID for facet reset button
+        _filtersResetBtn = 'filtersBtn', // ID for filter reset button
+        _uploadModal = 'uploadModal',    // ID for upload modal
+        _minRowHeight = 'minRowHeight',  // facet min row height slider ID
         _sliderValues = {}, // keeps track of all current slider values {tabName: {sliderName: val}, ...}
         _guiFacetCols = false,
         _guiFacetRows = false,
@@ -56,9 +60,9 @@ var GUI = (function() {
         if (d) { data = d; return this; }
         return data; 
     }
-    this.unique = function(d) {
-        if (d) { unique = d; return this; }
-        return unique; 
+    this.ignoreCol = function(d) {
+        if (d) { ignoreCol = d; return this; }
+        return ignoreCol; 
     }
     this.colTypes = function(d) {
         if (d) { colTypes = d; return this; }
@@ -69,10 +73,23 @@ var GUI = (function() {
         return formSubmit; 
     }
     this.init = function() { // initialize GUI
-        buildContainers();
-        populateGUI();
+
+
+        // show file upload model to user if no data is loaded
+        if (!data) { 
+            showModal();
+        } else {
+            // prep data
+            _colTypes = findColumnTypes(data,ignoreCol,colTypes);
+            _unique = getAllUnique(data, _colTypes);
+
+            buildContainers();
+            populateGUI();
+        }
+
         return this;
     }
+
     /**
      * Call to serializeArray() on the GUI form to return
      * all the current settings of the GUI. 
@@ -145,8 +162,6 @@ var GUI = (function() {
     // Private functions
     //------------------------------------------------------------    
 
-    // NEXT: think about how to parse setup and access those
-    // settings more easily e.g. defined plot types
     /**
      * Return an obj of plotTypes available in the specified config.
      * obj keys will be the plot type select value,
@@ -177,6 +192,321 @@ var GUI = (function() {
         var plotType = getPlotType() || Object.keys(config.plotTypes)[0];
         return Object.keys(config.plotTypes[plotType].setup); 
     }; // get axes in config for plot
+
+
+    /**
+     * Given a variable, return type of datum,
+     * one of either int, float, str, or datetime.
+     */
+    function getDatType(mixedVar) {
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && isDateTime(mixedVar)) return 'datetime';
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDateTime(mixedVar) && isStr(mixedVar)) return 'str';
+        if (isInt(mixedVar) && !isFloat(mixedVar) && !isStr(mixedVar)) return 'int';
+        if (!isInt(mixedVar) && isFloat(mixedVar) && !isStr(mixedVar)) return 'float';
+    }
+
+    // return true if val is an interger
+    function isInt(val) {
+        return val === +val && isFinite(val) && !(val % 1); // http://locutus.io/php/var/is_int/
+    }
+    // return true if val is a float
+    function isFloat(val) {
+        return +val === val && (!isFinite(val) || !!(val % 1)); // http://locutus.io/php/var/is_float/
+    }
+    // return true if val is a str
+    function isStr(val) {
+        return isNaN(val)
+    }
+    // return true if val is a datetime str
+    function isDateTime(val) {
+        return !isNaN(Date.parse(val))
+    }
+
+
+    /**
+     * Get all unique values for each of the columns provided by the datatable.
+     *
+     * Note that only data for those columns defined in colTypes will be returned
+     *
+     * @param {array} dat - Return of convertToJSON. An array of objects where the object key is the column header
+     *                and the value is the column value.
+     * @param {obj} colTypes - SQL column types for each field
+     *
+     * @ return {obj} Each key is a column and each value is an array of unique values that column has.
+     */
+    function getAllUnique(dat, colTypes) {
+
+        var colNames = Object.keys(colTypes); // list of columns for datatable
+        var vals = {};
+
+        function sortNumber(a,b) {
+            return a - b;
+        }
+
+        colNames.forEach(function(colName) {
+            var colType = colTypes[colName]
+            if (colType !== 'excluded') {
+                var unique = [...new Set(dat.map(item => item[colName]))].sort(); // http://stackoverflow.com/a/35092559/1153897
+                if (colType == 'int' || colType == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
+                vals[colName] = unique.map(function(d) { return d });
+            }
+        })
+
+        return vals;
+
+    }
+
+
+    /**
+     * When a user uploads a file, this function will
+     * inpsect the parsed data and determine the data
+     * type for each column as 'int','float','str' or
+     * 'datetime'
+     *
+     * @param {array} data - each array element is an object 
+     *   with column names as keys, and row value as value
+     * @param {array, optional} ignreCol - list of column names to ignore
+     *   from output object; this is how a user can ignore columns
+     *   present in their data.
+     * @param colTypes {obj, optional} - same format as the output of this
+     *   function; allows user to manually overwrite a column type. e.g.
+     *   if all subjects are identified with a numeric ID, but user still
+     *   wants to treat this as a str.
+     *
+     * @return {obj} - each key is a column name, each value
+     *   is the column data type (int,float,str,datetime)
+     */
+    function findColumnTypes(data, ignoreCol, colTypes) {
+        var colMap = {};
+
+        // add colTypes keys (column names) to the ignore list
+        // we will manually add them in before the return
+        if (colTypes && Object.keys(colTypes).length) ignoreCol.concat(Object.keys(colTypes));
+
+        // init with first row vals
+        var colNames = Object.keys(data[0]); // column names
+        var colVals = Object.values(data[0]); // row 1 values
+        colNames.forEach(function(d,i) {
+            if (ignoreCol.indexOf(d) == -1) colMap[d] = getDatType(colVals[i]);
+        })
+
+    
+        // check each row for the data type
+        // we only update things if the data
+        // type 'trumps' the first row
+        // 'trump' order is int, float, datetime,
+        // str meaning a float type will convert trump
+        // an int
+        var trump = {'int':0, 'float':1, 'datetime': 2, 'str':3}
+        data.forEach(function(d) {
+            var rowVal = Object.values(d);
+
+            colNames.forEach(function(col,i) {
+                if (ignoreCol.indexOf(col) == -1 ) {
+                    var currentType = colMap[col];
+                    if (currentType === 'str') return;
+                    var valType = getDatType(rowVal[i]);
+                    if (valType !== currentType) { // if type is different than currently stored
+                        if (valType == 'datetime' || valType == 'str') {
+                            // if previously a number (int or float) and changing to either datetime or str, make it a str
+                            colMap[col] = 'str';
+                        } else if (trump[valType] > trump[currentType]) { 
+                            colMap[col] = valType;
+                        } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
+                            // if previously a datetime, and we get anything else, convert to str
+                            colMap[col] = 'str';
+                        }
+                    }
+                }
+            });
+        });
+
+        // manually add in user specified column type
+        if (colTypes) {
+            Object.keys(colTypes).forEach(function(d,i) {
+                colMap[d] = Object.values(colTypes)[i];
+            })
+        }
+
+        return colMap;
+    }
+
+    /**
+     * onClick event handler for uploading data, called
+     * when users selects a file to upload from the
+     * upload modal. 
+     *
+     * Function will check that a parseable filetype
+     * has been passed (plain-text with some sort of
+     * delimiter). If so, colTypes and unique are
+     * calculated and the user is show how the file
+     * was parsed.
+     */
+    function uploadData() {
+
+        // parse file
+        $('input[type=file]').parse({
+            config: {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results, file) {
+                    data = results.data;
+                    var meta = results.meta;
+                    var errors = results.errors;
+
+                    // clear modal body
+                    var modalBody = d3.select('#modalBody')
+                    modalBody.html('');
+                    jQuery('#uploadDone').remove();
+
+                    if (errors.length) { // if there was an error
+                      
+                        jQuery('.modal-content').addClass('panel-danger');
+ 
+                        // just grab first error for now
+                        var errorText = '<span class="text-danger fa fa-exclamation " aria-hidden="true"></span> ' + errors[0].message;
+                        if (typeof errors[0].row !== 'undefined') errorText += " - error found in row " + errors[0].row;
+                        modalBody.append('h4')
+                            .attr('class','lead')
+                            .html(errorText)
+                    } else {
+
+                        jQuery('.modal-content').removeClass('panel-danger').addClass('panel-info');
+                        colTypes = findColumnTypes(data, ignoreCol);
+                        unique = getAllUnique(data, colTypes)
+
+                        // show user parsed results
+                        modalBody.append('h4')
+                            .attr('class','lead')
+                            .text('Data loaded successfully!')
+                        modalBody.append('p')
+                            .text('The following columns were found with the given column types:')
+
+                        modalBody.append('ul')
+                            .selectAll('li')
+                            .data(Object.keys(colTypes))
+                            .enter()
+                            .append('li')
+                            .html(function(d, i) { return d + ' - <code>' + Object.values(colTypes)[i] + '</code>'; });
+
+                        modalBody.append('p')
+                            .text('If this is incorrect, please change your data and upload again.');
+
+                        // add 'done' button
+                        d3.select('.modal-footer')
+                            .append('button')
+                            .attr('type','button')
+                            .attr('class','btn btn-success')
+                            .attr('data-dismiss','modal')
+                            .attr('id','uploadDone')
+                            .text('Done')
+                            .on('click', init);
+
+                    }
+                }
+            },
+            before: function(file, inputElem) {
+                // show spinner
+                var modalBody = d3.select('#modalBody')
+                modalBody.html(''); // clear content
+
+                // ensure proper file type
+                var allowFileType = ['csv','txt','tsv'];
+                var tmp = file.name.split('.');
+                var extension = tmp[tmp.length - 1];
+                if (allowFileType.indexOf(extension) == -1 || ["text/plain","text/csv"].indexOf(file.type) == -1) {
+
+                    jQuery('.modal-content').addClass('panel-danger');
+
+                    var errorText = '<span class="text-danger fa fa-exclamation " aria-hidden="true"></span> ';
+                    errorText += 'File must be plain text have one of the following extensions: ' + allowFileType.join(", ");
+                    modalBody.append('h4')
+                        .attr('class','lead')
+                        .html(errorText)
+
+                    return {action: "abort"};
+
+                } else { // no errors loading file, proceed
+
+                    modalBody.append('i')
+                        .attr('class','fa fa-spinner fa-pulse fa-2x fa-fw');
+                    modalBody.append('span')
+                        .text('Loading...');
+
+                    return {action: "continue"};
+                }
+            },
+        });
+        
+    }
+
+    /**
+     * Automatically called if data isn't yet loaded
+     */
+    function showModal() {
+
+        // if modal doesn't already exist, create it
+        if (jQuery('#'+_uploadModal).length === 0) {
+        
+            var modal = d3.select('body').append('div')
+                .attr('class','modal fade')
+                .attr('tabindex',-1)
+                .attr('role','dialog')
+                .attr('id',_uploadModal)
+                .append('div')
+                .attr('class','modal-dialog')
+                .attr('role','document')
+                .append('div')
+                .attr('class','modal-content panel-info')
+
+            var modalHeader = modal.append('div')
+                .attr('class','modal-header panel-heading')
+                
+            modalHeader.append('button')
+                .attr('type','button')
+                .attr('class','close')
+                .attr('data-dismiss','modal')
+                .attr('aria-label','Close')
+                .append('span')
+                .attr('area-hidden',true)
+                .html('&times')
+
+            modalHeader.append('h4')
+                .attr('class','modal-title')
+                .text('Load data')
+
+            var modalBody = modal.append('div')
+                .attr('class','modal-body')
+                
+            var text = "Looks like you don't have any data loaded, please upload some.";
+            modalBody.append('div')
+                .attr('class','row')
+                .append('div')
+                .attr('class','col-sm-12')
+                .attr('id','modalBody')
+                .append('h4')
+                .attr('class','lead')
+                .text(text)
+
+            var modalFooter = modal.append('div')
+                .attr('class','modal-footer')
+
+
+            modalFooter.append('label')
+                .attr('class','btn btn-primary btn-file')
+                .text('Choose file')
+                .append('input')
+                .attr('type','file')
+                .style('display','none')
+                .on('change',uploadData)
+
+            jQuery('#'+_uploadModal).modal().show();
+        }
+            
+    }
+
+
 
     /**
      * Return an array of columns in the loaded dataset
@@ -226,8 +556,6 @@ var GUI = (function() {
             note += 'each additional filter is combined as an <code>and</code> boolean operation.';
             addTab(_filtersTab, 'Filters', note);
 
-
-
             // generate an input for each of the columns in the loaded dataset
             for (var col in colTypes) {
                 var colType = colTypes[col]
@@ -252,7 +580,7 @@ var GUI = (function() {
                     }
                     var opts =  {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format}
                     slider = generateFormSlider(_filtersTab, opts);
-                    slider.noUiSlider.on('start',function() { showButton(_filtersResetBtn) }); // activate reset button
+                    if (slider) slider.noUiSlider.on('start',function() { showButton(_filtersResetBtn) }); // activate reset button
 
                 } else if (colType == 'str') { // if categorical, render a select
                     var opts = {
@@ -980,7 +1308,7 @@ var GUI = (function() {
         if (typeof opts.domClass === 'undefined' || !opts.domClass) opts.domClass = 'col-sm-4';
         if (typeof opts.format === 'undefined') opts.format = function(d) { return '[' + d + ']'; };
         if (typeof opts.options === 'undefined' || !opts.options) {
-            options = { // default slider if no options provided
+            opts.options = { // default slider if no options provided
                 start:[50],
                 step: 1,
                 range: {
@@ -989,6 +1317,10 @@ var GUI = (function() {
                 }
             };
         }
+
+        // need min != max to render a slider
+        if (opts.options.range.min == opts.options.range.max) return;
+
         var id = opts.accessor
         opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
         var format = opts.format;

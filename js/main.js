@@ -29,11 +29,10 @@ var meowcow = (function() {
     //============================================================
     // Private variables
     //------------------------------------------------------------
-    var _colTypes,            // automatically detected column types
-        _unique,              // obj of unique values for each column
-        _gui,                 // gui class object
-        _guiWrap='gui',       // ID for GUI DOM
-        _canvasWrap='canvas'  // ID for plot DOM
+    var _gui,                  // gui class object
+        _guiWrap='gui',        // ID for GUI DOM
+        _canvasWrap='canvas',  // ID for plot DOM
+        _renderBtn='renderBtn' // ID for GUI render button
     
 
 
@@ -66,17 +65,13 @@ var meowcow = (function() {
         if (jQuery('#'+_guiWrap).length == 0) d3.select(container).append('div').attr('id',_guiWrap).attr('class','row')
         if (jQuery('#'+_canvasWrap).length == 0) d3.select(container).append('div').attr('id',_canvasWrap)
 
-        // prep data
-        _colTypes = findColumnTypes(data,ignoreCol,colTypes);
-        _unique = getAllUnique(data, _colTypes);
 
         // build gui
         _gui = GUI()
             .container('#'+_guiWrap)
-            .data(data)
             .config(config)
-            .colTypes(_colTypes)
-            .unique(_unique)
+            .colTypes(colTypes)
+            .ignoreCol(ignoreCol)
             .formSubmit(renderPlot)
             .init();
    
@@ -100,8 +95,8 @@ var meowcow = (function() {
     function renderPlot() {
 
         // change render button to spinner
-        jQuery('#renderBtn').html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
-        jQuery('.collapse').collapse() // collapse GUI
+        jQuery('#'+_renderBtn).html('<i class="fa fa-spinner fa-spin"></i>').prop('disabled', true);
+        //jQuery('.collapse').collapse() // collapse GUI
 
         var guiVals = _gui.getGUIvals();
         
@@ -124,7 +119,6 @@ var meowcow = (function() {
         facetRows.forEach(function(rowName,i) {
             facetCols.forEach(function(colName,j) {
 
-                var selFacet = '#row_' + i + '-col_' + j;
                 var facetDat = facets[rowName][colName];
 
                 if (typeof facetDat !== 'undefined') {
@@ -139,7 +133,7 @@ var meowcow = (function() {
                     }
 
                     // draw plot
-                    populateChart(facetDat, selFacet, guiVals, title, chartCount);
+                    populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
                 }
                 chartCount += 1;
             });
@@ -149,7 +143,7 @@ var meowcow = (function() {
         })
 
         
-        jQuery('#renderBtn').html('Update').prop('disabled', false); // TODO wait until everything finishes rendering ... async!
+        jQuery('#'+_renderBtn).html('Update').prop('disabled', false); // TODO wait until everything finishes rendering ... async!
     }
 
     /**
@@ -244,113 +238,7 @@ var meowcow = (function() {
 
     }
 
-    /**
-     * Get all unique values for each of the columns provided by the datatable.
-     *
-     * Note that only data for those columns defined in colTypes will be returned
-     *
-     * @param {array} dat - Return of convertToJSON. An array of objects where the object key is the column header
-     *                and the value is the column value.
-     * @param {obj} colTypes - SQL column types for each field
-     *
-     * @ return {obj} Each key is a column and each value is an array of unique values that column has.
-     */
-    function getAllUnique(dat, colTypes) {
 
-        var colNames = Object.keys(colTypes); // list of columns for datatable
-        var vals = {};
-
-        function sortNumber(a,b) {
-            return a - b;
-        }
-
-        colNames.forEach(function(colName) {
-            var colType = colTypes[colName]
-            if (colType !== 'excluded') {
-                var unique = [...new Set(dat.map(item => item[colName]))].sort(); // http://stackoverflow.com/a/35092559/1153897
-                if (colType == 'int' || colType == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
-                vals[colName] = unique.map(function(d) { return d });
-            }
-        })
-
-        return vals;
-
-    }
-
-
-    /**
-     * When a user uploads a file, this function will
-     * inpsect the parsed data and determine the data
-     * type for each column as 'int','float','str' or
-     * 'datetime'
-     *
-     * @param {array} data - each array element is an object 
-     *   with column names as keys, and row value as value
-     * @param {array, optional} ignreCol - list of column names to ignore
-     *   from output object; this is how a user can ignore columns
-     *   present in their data.
-     * @param colTypes {obj, optional} - same format as the output of this
-     *   function; allows user to manually overwrite a column type. e.g.
-     *   if all subjects are identified with a numeric ID, but user still
-     *   wants to treat this as a str.
-     *
-     * @return {obj} - each key is a column name, each value
-     *   is the column data type (int,float,str,datetime)
-     */
-    function findColumnTypes(data, ignoreCol, colTypes) {
-        var colMap = {};
-
-        // add colTypes keys (column names) to the ignore list
-        // we will manually add them in before the return
-        if (colTypes && Object.keys(colTypes).length) ignoreCol.concat(Object.keys(colTypes));
-
-        // init with first row vals
-        var colNames = Object.keys(data[0]); // column names
-        var colVals = Object.values(data[0]); // row 1 values
-        colNames.forEach(function(d,i) {
-            if (ignoreCol.indexOf(d) == -1) colMap[d] = getDatType(colVals[i]);
-        })
-
-    
-        // check each row for the data type
-        // we only update things if the data
-        // type 'trumps' the first row
-        // 'trump' order is int, float, datetime,
-        // str meaning a float type will convert trump
-        // an int
-        var trump = {'int':0, 'float':1, 'datetime': 2, 'str':3}
-        data.forEach(function(d) {
-            var rowVal = Object.values(d);
-
-            colNames.forEach(function(col,i) {
-                if (ignoreCol.indexOf(col) == -1 ) {
-                    var currentType = colMap[col];
-                    if (currentType === 'str') return;
-                    var valType = getDatType(rowVal[i]);
-                    if (valType !== currentType) { // if type is different than currently stored
-                        if (valType == 'datetime' || valType == 'str') {
-                            // if previously a number (int or float) and changing to either datetime or str, make it a str
-                            colMap[col] = 'str';
-                        } else if (trump[valType] > trump[currentType]) { 
-                            colMap[col] = valType;
-                        } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
-                            // if previously a datetime, and we get anything else, convert to str
-                            colMap[col] = 'str';
-                        }
-                    }
-                }
-            });
-        });
-
-        // manually add in user specified column type
-        if (colTypes) {
-            Object.keys(colTypes).forEach(function(d,i) {
-                colMap[d] = Object.values(colTypes)[i];
-            })
-        }
-
-        return colMap;
-    }
 
     /**
      * Generate the proper facet grid setup based on GUI options
@@ -406,7 +294,6 @@ var meowcow = (function() {
 
         // calculate width/height of each facet 
         var colWidth = jQuery('#guiPanel').width() / numCols;
-        console.log(jQuery('#'+ _guiWrap).width());
         var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / aspectRatio;
 
         // generate DOM elements
@@ -487,42 +374,12 @@ var meowcow = (function() {
 
     }
 
-    /**
-     * Given a variable, return type of datum,
-     * one of either int, float, str, or datetime.
-     */
-    function getDatType(mixedVar) {
-        if (!isInt(mixedVar) && !isFloat(mixedVar) && isDateTime(mixedVar)) return 'datetime';
-        if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDateTime(mixedVar) && isStr(mixedVar)) return 'str';
-        if (isInt(mixedVar) && !isFloat(mixedVar) && !isStr(mixedVar)) return 'int';
-        if (!isInt(mixedVar) && isFloat(mixedVar) && !isStr(mixedVar)) return 'float';
-    }
-
-    // return true if val is an interger
-    function isInt(val) {
-        return val === +val && isFinite(val) && !(val % 1); // http://locutus.io/php/var/is_int/
-    }
-    // return true if val is a float
-    function isFloat(val) {
-        return +val === val && (!isFinite(val) || !!(val % 1)); // http://locutus.io/php/var/is_float/
-    }
-    // return true if val is a str
-    function isStr(val) {
-        return isNaN(val)
-    }
-    // return true if val is a datetime str
-    function isDateTime(val) {
-        return !isNaN(Date.parse(val))
-    }
-
     //============================================================
     // Expose
     //------------------------------------------------------------
     return this;
 
 });
-
-
 
 
 
