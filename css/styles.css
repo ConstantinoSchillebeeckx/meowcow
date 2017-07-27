@@ -11,6 +11,10 @@
     background-color: #EFF3F3;
 }
 
+#canvas {
+    margin-bottom:10px;
+}
+
 html {
     overflow-y: scroll; /* forces vertical scrollbar which is needed for proper width calculations such as for facets */
 }

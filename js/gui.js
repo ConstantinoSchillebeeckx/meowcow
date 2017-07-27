@@ -18,15 +18,13 @@ var GUI = (function() {
         data = false,       // data to plot
         colTypes = {},      // overwrite column types with these
         formSubmit,         // form submit function for render
-        unique = [],        // columns to ignore in data
         ignoreCol = false   // columns to ignore in data
 
 
     //============================================================
     // Private variables
     //------------------------------------------------------------
-    var _colTypes,             // automatically detected column types
-        _unique,               // obj of unique values for each column
+    var _unique = false,                 // obj of unique values for each column
         _guiID = 'guiBody',              // ID to give to gui body
         _warningsID = 'warnings',        // ID to give to warnings DOM
         _renderBtnID = 'renderBtn',      // ID for render button
@@ -39,11 +37,14 @@ var GUI = (function() {
         _filtersResetBtn = 'filtersBtn', // ID for filter reset button
         _uploadModal = 'uploadModal',    // ID for upload modal
         _minRowHeight = 'minRowHeight',  // facet min row height slider ID
-        _sliderValues = {}, // keeps track of all current slider values {tabName: {sliderName: val}, ...}
-        _guiFacetCols = false,
-        _guiFacetRows = false,
-        _guiFacetWrap = false,
-        _guiFacetMinHeight = false
+        _sliderValues = {},      // keeps track of all current slider values {tabName: {sliderName: val}, ...}
+        _filteredData = false,   // data to be plotted, could be filtered or not
+        _guiVals = {}
+
+    _guiVals[_setupTab] = {},
+    _guiVals[_optionsTab] = {},
+    _guiVals[_filtersTab] = {},
+    _guiVals[_facetsTab] = {}
 
     //============================================================
     // Public getters & setters
@@ -58,7 +59,7 @@ var GUI = (function() {
     }
     this.data = function(d) {
         if (d) { data = d; return this; }
-        return data; 
+        return _filteredData ? _filteredData : data; 
     }
     this.ignoreCol = function(d) {
         if (d) { ignoreCol = d; return this; }
@@ -74,14 +75,15 @@ var GUI = (function() {
     }
     this.init = function() { // initialize GUI
 
-
         // show file upload model to user if no data is loaded
         if (!data) { 
             showModal();
         } else {
             // prep data
-            _colTypes = findColumnTypes(data,ignoreCol,colTypes);
-            _unique = getAllUnique(data, _colTypes);
+            if (!_unique) { // don't need to prep data if modal was used since it already does it
+                colTypes = findColumnTypes(data,ignoreCol,colTypes);
+                _unique = getAllUnique(data, colTypes);
+            }
 
             buildContainers();
             populateGUI();
@@ -96,12 +98,13 @@ var GUI = (function() {
      *
      * A checked checkbox will return as true, otherwise false
      *
-     * @return {object} - object of gui values with each tab ID
+     * @return _guiVals - will set the private var _guiVals formated as
+     *   an object of gui values with each tab ID
      *   as a key, the value of which are the input values. Inner
      *   object has input id as the key and values are:
-     *   - for select dropdowns, the value is as object of form
-     *     {label: XX, value: XX}. note that for the 'None' options
-     *     the value will both be null
+     *   - for mutli select dropdowns, the value is an array of selected
+     *     values; for single select, it is the selected value.
+     *     note that for the 'None' options the value & key will both be null
      *   - for checkboxes, the value will be true/false
      *   - for sliders the value will be an array of either length
      *     1 for a single value slider, or 2 for a min/max slider
@@ -109,50 +112,55 @@ var GUI = (function() {
      */
     this.getGUIvals = function() {
     
-        var guiVals = {};
         jQuery('form div.tab-pane').each(function() {
             var tab = this.id;
-            guiVals[tab] = {};
 
-            // parse select inputs
-            var tmp = jQuery(this).find(':input').serializeArray();
+            if (tab != _filtersTab) { // gui vals from filtersTab are set with their own onChange event
 
-            tmp.forEach(function(d) {
-                var value = d.value;
-                var name = d.name;
-                guiVals[tab][name] = {}
-                guiVals[tab][name]['value'] = (value == '' || value == "None") ? null : convertToNumber(value);
-                guiVals[tab][name]['label'] = jQuery("#" + name + " option:selected").text();
-            });
+                // parse select inputs
+                var tmp = jQuery(this).find(':input').serializeArray();
 
-            // parse checkboxes
-            var checkBoxes = jQuery(this).find('input[type="checkbox"]');
-            if (checkBoxes.length) {
-                checkBoxes.each(function(d) {
-                    guiVals[tab][this.id] = this.checked;
-                })
-            }
+                // group selects together so multiple select
+                // gets stored as an array
+                var selects = d3.nest()
+                .key(function(d) { return d.name; })
+                .entries(tmp);
 
-            // parse slider values
-            if (tab in _sliderValues) {
-                for (var slider in _sliderValues[tab]) {
-                    guiVals[tab][slider] = _sliderValues[tab][slider];
+                selects.forEach(function(d) {
+                    var values = d.values.map(function(e) { return e.value == "" ? null : e.value});
+
+                    // only filtersTab has multiple select, so the other
+                    // tabs will have just a single value, store that value
+                    if (tab != _filtersTab) values = values[0];
+                    _guiVals[tab][d.key] = values;
+                });
+
+                // parse checkboxes
+                var checkBoxes = jQuery(this).find('input[type="checkbox"]');
+                if (checkBoxes.length) {
+                    checkBoxes.each(function(d) {
+                        _guiVals[tab][this.id] = this.checked;
+                    })
                 }
-            }
 
-            // set a bool for facets on/off
-            if (tab == _facetsTab) {
-                guiVals[_facetsTab].facetOn = (guiVals[_facetsTab]['col-facet'].value !== null || guiVals[_facetsTab]['row-facet'].value !== null)
-            }
+                // parse slider values
+                if (tab in _sliderValues) {
+                    for (var slider in _sliderValues[tab]) {
+                        _guiVals[tab][slider] = _sliderValues[tab][slider];
+                    }
+                }
 
-            // set a bool for filters on/off
-            if (tab == _filtersTab) {
-                guiVals[_filtersTab].filterOn = dataFilterOn();
+                // set a bool for facets on/off
+                if (tab == _facetsTab) {
+                    _guiVals[_facetsTab].facetOn = (_guiVals[_facetsTab]['col-facet'] != null || _guiVals[_facetsTab]['row-facet'] != null)
+                }
+
+            } else {
+                _guiVals[_filtersTab].filterOn = dataFilterOn();
             }
         })
 
-
-        return guiVals;
+        return _guiVals;
 
     }
 
@@ -177,11 +185,7 @@ var GUI = (function() {
         return tmp;
     };
 
-    var getFacetRow = function(d) { return d.plotFacets['row-facet'].value; }
-    var getFacetCol = function(d) { return d.plotFacets['col-facet'].value; }
-    var getFacetWrap = function(d) { return d.plotFacets.colWrap.value; }
     var dataFilterOn = function() { return jQuery('#'+_filtersResetBtn).is(':visible'); }
-    var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight]; }
     var getPlotConfig = function() { return config.plotTypes[getPlotType()]; }; // get config for currently selected plot
     var getPlotOptions = function(plotType) { return getPlotConfig().options; }; // get options for current plot
     var getPlotType = function() { return jQuery('#'+_plotTypesID).val(); }; // get currently selected plot type
@@ -374,7 +378,7 @@ var GUI = (function() {
 
                         jQuery('.modal-content').removeClass('panel-danger').addClass('panel-info');
                         colTypes = findColumnTypes(data, ignoreCol);
-                        unique = getAllUnique(data, colTypes)
+                        _unique = getAllUnique(data, colTypes)
 
                         // show user parsed results
                         modalBody.append('h4')
@@ -512,7 +516,7 @@ var GUI = (function() {
      * Return an array of columns in the loaded dataset
      * that match the requested data type
      *
-     * @param {str} type - type of columns requested, either interval
+     * @param {str} type - type of columns requested, either quantitative
      *   (int, float) or ordinal (str, datetime); if not provided, will return
      *   colTYpes
      *
@@ -522,7 +526,7 @@ var GUI = (function() {
      */
     var getColsByType = function(type) { // return colTypes keys that match the given type [interval/ordinal]
         if (typeof type !== 'undefined') {
-            var filter = type == 'interval' ? ['int','float'] : ['datetime','str'];
+            var filter = type == 'quantitative' ? ['int','float'] : type == 'ordinal' ? ['datetime','str'] : ['int','float','datetime','str'];
             return Object.keys(colTypes).filter(function(e) { return filter.indexOf(colTypes[e]) != -1  })
         }
     };
@@ -548,7 +552,7 @@ var GUI = (function() {
         var slider, select;
 
         // it is required in order to set all the filter limits
-        if (typeof unique !== 'undefined') {
+        if (typeof _unique !== 'undefined') {
 
             // add tab and container
             var note = 'Use the inputs below to filter the plotted data.';
@@ -559,10 +563,10 @@ var GUI = (function() {
             // generate an input for each of the columns in the loaded dataset
             for (var col in colTypes) {
                 var colType = colTypes[col]
-                var colVals = unique[col];
+                var colVals = _unique[col];
 
                 if (colType == 'int' || colType == 'float') { // if a number, render a slider
-                    colVals = d3.extent(unique[col]);
+                    colVals = d3.extent(_unique[col]);
                     var sliderOptions = {
                         start: [colVals[0], colVals[1]],
                         connect: true,
@@ -578,14 +582,21 @@ var GUI = (function() {
                     } else if (colType == 'float') {
                         format = colTypes[col].format ? colTypes[col].format : function(d) { return '[' + parseFloat(d[0]).toFixed(2) + ',' + parseFloat(d[1]).toFixed(2) + ']'; };
                     }
-                    var opts =  {accessor:col+'Filter', label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format}
+                    var opts =  {accessor:col, label:col, domClass:'col-sm-4 filterInput', options:sliderOptions, format:format}
                     slider = generateFormSlider(_filtersTab, opts);
-                    if (slider) slider.noUiSlider.on('start',function() { showButton(_filtersResetBtn) }); // activate reset button
+                    if (slider) { 
+                        slider.noUiSlider.on('start',function() { 
+                            showButton(_filtersResetBtn) // activate reset button
+                        })
+                        slider.noUiSlider.on('end',function() { 
+                            _guiVals[_filtersTab][this.id] = this.get(); // store selected vals // TODO this.id doesn't work
+                        })
+                    }
 
                 } else if (colType == 'str') { // if categorical, render a select
                     var opts = {
                         values:colVals, 
-                        accessor:col+'Filter', 
+                        accessor:col, 
                         label:col, 
                         domClass:'col-sm-4 filterInput', 
                         attributes:{
@@ -595,12 +606,34 @@ var GUI = (function() {
                         selectAll: true
                     };
                     select = generateFormSelect(_filtersTab, opts);
-                    select.on('change',function() { showButton(_filtersResetBtn) }); // activate reset button
+                    select.on('change',function() { 
+                        showButton(_filtersResetBtn) // activate reset button
+                        _guiVals[_filtersTab][this.id] = jQuery(this).val(); // store selected vals
+                    });
                 } else if (colType == 'datetime') {
                     var opts = {values:colVals, accessor:col, label:col, type:colType, range:true, domClass:'col-sm-8'};
                     generateDateTimeInput(_filtersTab, opts);
-                    jQuery('#'+col+'DateTime').on('dp.change', function() { showButton(_filtersResetBtn)})
-                    if (opts.range) jQuery('#'+col+'2DateTime').on('dp.change', function() { showButton(_filtersResetBtn)})
+
+                    jQuery('#'+col+'DateTime').on('dp.change', function() { 
+                        showButton(_filtersResetBtn) // activate reset button
+                        var col = this.id.replace('DateTime','');
+                        var picker2 = this.id.replace('DateTime','2DateTime');
+                        var picker1 = this.id;
+                        _guiVals[_filtersTab][col] = [
+                            jQuery('#'+picker1).data('DateTimePicker').date(),
+                            jQuery('#'+picker2).data("DateTimePicker").date()
+                        ]
+                    })
+                    if (opts.range) jQuery('#'+col+'2DateTime').on('dp.change', function() { 
+                        showButton(_filtersResetBtn) // activate reset button
+                        var col = this.id.replace('DateTime','');
+                        var picker1 = this.id.replace('2DateTime','DateTime');
+                        var picker2 = this.id;
+                        _guiVals[_filtersTab][col] = [
+                            jQuery('#'+picker1).data('DateTimePicker').date(),
+                            jQuery('#'+picker2).data("DateTimePicker").date()
+                        ]
+                    })
                 }
             }
 
@@ -703,7 +736,7 @@ var GUI = (function() {
                 domClass: 'col-sm-3',
             }
             var slider = generateFormSlider(_facetsTab, opts);
-            input.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
+            slider.noUiSlider.on('start',function() { showButton(_facetResetBtn) }); // activate reset button
 
             // filter reset button
             // initially hide it
@@ -934,28 +967,20 @@ var GUI = (function() {
      * GUI values and ensure plots can be rendered. if everything looks ok
      * the formSubmit function is called, otherwise void is returned.
      *
-     * will also remove any current plots if needed (only when facet 
-     * options are changed).
-     *
      */
     function preRender() {
 
         // get GUI vals
-        var guiVals = getGUIvals();
+        getGUIvals();
 
-        // clear any previously existent plots/warnings
-        // plots are only cleared if the GUI options for facets are changed
-        if (facetOptionsHaveChanged(guiVals)) { jQuery(canvas).empty(); }
-        jQuery('#warning').empty();
+        // filter data if needed
+        _filteredData = data;
+        if (_guiVals.plotFilter.filterOn) _filteredData = filterData(_filteredData, _guiVals.plotFilter);
+        console.log(_filteredData)
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
-        if (validateGUIsettings(guiVals)) console.log('skipping error'); //return;
+        if (!validateGUIsettings(_guiVals)) return;
 
-        // store current GUI facet options so we can compare for updates
-        _guiFacetCols = getFacetRow(guiVals);
-        _guiFacetRows = getFacetCol(guiVals);
-        _guiFacetWrap = getFacetWrap(guiVals);
-        _guiFacetMinHeight = getFacetMinHeight(guiVals)
 
         // everything looks good, let's render!
         formSubmit();
@@ -963,21 +988,46 @@ var GUI = (function() {
     }
 
     /**
-     * Return true if facet options have been changed since previous 
-     * render; this is used to reset all the plots/facets for
-     * re-drawing.
+     * filter attached data to reduce what is being plotted
      *
-     * @return - true if facet options have been changed; false
-     *   otherwise.
+     * @param {list} dat - data to filter
+     * @param {obj} filters - filter data from GUI with data column
+     *   as key, and filter value as the value; value format
+     *   changes based on the type of form input: 
+     *   - dropdowns: the value will be formatted as an object 
+     *     with keys 'label' and 'value'. 
+     *   - slider: values are formatted as an array of
+     *     length 1 or 2 depending on the number of handles. 
+     *   - date: formatted like dropdowns, however there will
+     *     be a second obj key named like the first but with 
+     *     an appended '2', since dates are setup as ranges.
+     * 
+     * @return {list} - filtered data
      */
-    function facetOptionsHaveChanged(guiVals) {
-        if (_guiFacetCols !== getFacetRow(guiVals) || 
-            _guiFacetRows !== getFacetCol(guiVals) || 
-            _guiFacetWrap !== getFacetWrap(guiVals) || 
-            _guiFacetMinHeight !== getFacetMinHeight(guiVals)) {
-            return true;
-        }
-        return false
+    function filterData(dat, filters) {
+
+        delete filters.filterOn;
+        
+        // go through data and apply filters
+        return dat.filter(function(datRow) {
+            var keep = true; 
+            Object.keys(filters).forEach(function(filter) {
+                var filterType = colTypes[filter]; // str, datetime, or float
+                var filterVals = filters[filter];
+                var rowVal = datRow[filter];
+                if (filterType == 'str') {
+                    if (filterVals.indexOf(rowVal) == -1) keep = false;
+                } else if (filterType == 'float' || filterType == 'int') {
+                    console.log(rowVal, filterVals)
+                    if (rowVal < filterVals[0] || rowVal > filterVals[1]) keep = false;
+                } else if (filterType == 'datetime' || filterType == 'date') {
+                    rowVal = moment(rowVal);
+                    if (rowVal.isBefore(filterVals[0]) || rowVal.isAfter(filterVals[1])) keep = false;
+                }
+            });
+            return keep;
+        })
+
     }
 
     /**
@@ -992,9 +1042,9 @@ var GUI = (function() {
 
         var setupVals = guiVals[_setupTab];
         var facetVals = guiVals[_facetsTab];
-        var wrapVal = facetVals.colWrap.value;
+        var wrapVal = facetVals.colWrap == null ? 0 : facetVals.colWrap;
 
-        if (setupVals['x-axis'].label == setupVals['y-axis'].label) { // ensure x & y axis are different
+        if (setupVals['x-axis'] == setupVals['y-axis']) { // ensure x & y axis are different
             displayWarning("The X-axis field cannot be the same as the Y-axis field, please change one of them!", _warningsID, true);
             return false;
         }
@@ -1002,29 +1052,28 @@ var GUI = (function() {
         // check that selected plot type is an option in nv.models (should be a key) TODO
 
         // TODO further checks
+        console.log(guiVals)
 
         if (facetVals.facetOn || wrapVal > 0) {
-            var hVal = facetVals['col-facet'].value
-            var hLabel = facetVals['col-facet'].label
-            var vVal = facetVals['row-facet'].value
-            var vLabel = facetVals['row-facet'].label
-            var facetRows = (hVal) ? unique[hLabel] : [null];
-            var facetCols = (vVal) ? unique[vLabel] : [null];
+            var colVal = facetVals['col-facet']
+            var rowVal = facetVals['row-facet']
+            var facetRows = (colVal) ? _unique[colVal] : [null];
+            var facetCols = (rowVal) ? _unique[rowVal] : [null];
 
-            if (hVal === null && vVal === null && wrapVal === null) {
+            if (colVal === null && rowVal === null && wrapVal === null) {
                 displayWarning("In order to use facets, you must at least choose something for <code>Rows</code> or <code>Columns</code>", _warningsID, true);
                 return false;
             }
-            if (wrapVal > 0 && vVal !== null) {
+            if (wrapVal > 0 && rowVal !== null) {
                 displayWarning("You cannot specify a <code>Rows</code> option when specifying <code>Column wrap</code>.", _warningsID, true);
                 return false;
             }
-            if (vLabel === hLabel) {
+            if (rowVal === colVal) {
                 displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", _warningsID, true);
                 return false;
             }
             if (facetRows.length > 50 || facetCols.length > 50) { // limit how many facets can be rendered
-                displayWarning("Cancelling render because too many facets would be created.", '#warningCol', true);
+                displayWarning("Cancelling render because too many facets would be created.", _warningsID, true);
                 return false;
             }
         }
@@ -1422,7 +1471,8 @@ var GUI = (function() {
         // add popover
         if (typeof opts.help !== 'undefined') {
 
-            if (!('container' in opts.help)) opts.help.container = 'div#guiWrap'; // constrain popover to GUI if not specified
+
+            if (!('container' in opts.help)) opts.help.container = 'div#'+selector; // constrain popover to GUI if not specified
 
             span.attr('data-toggle','popover')
                 .append('i')
@@ -1447,13 +1497,10 @@ var GUI = (function() {
         for (var col in colTypes) {
             var colType = colTypes[col];
             if (colType == 'int' || colType == 'float') {
-                var slider = d3.select('#'+tabID).select('#'+col+'FilterSliderWrap').node()
-                if (slider) {
-                    var colVals = d3.extent(unique[col]);
-                    slider.noUiSlider.set(colVals); // TODO use this.options.start instead - BUG min row height slider not resetting
-                }
+                var slider = d3.select('#'+tabID).select('.noUi-target').node() // TODO will only select a single slider, need to select all, and reset all
+                if (slider) slider.noUiSlider.reset();
             } else if (colType == 'datetime') {
-                jQuery('#'+col+'DateTime').data("DateTimePicker").date(moment(unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)
+                jQuery('#'+col+'DateTime').data("DateTimePicker").date(moment(_unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)
             }
         }
 

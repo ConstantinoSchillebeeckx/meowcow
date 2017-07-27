@@ -63,7 +63,7 @@ var guiSetup = {
                         title: "Help",
                         trigger: "hover",
                         html: true,
-                        placement: "top"
+                        placement: "auto right"
                     },
                     set: 'scott'
                 }, {
@@ -95,7 +95,7 @@ var guiSetup = {
                     accessor: 'observationRadius',
                     label: 'Observation radius',
                     type: 'slider',
-                    options: {start: 3, range: {'min':0, 'max':50}, step:1, connect: [true, false],},
+                    options: {start: 3, range: {'min':0, 'max':20}, step:1, connect: [true, false],},
                     format: function(d) { return '[' + parseInt(d) + ']' },
                 },{
                     accessor: 'notchBox',
