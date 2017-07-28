@@ -99,9 +99,9 @@ var meowcow = (function() {
     // Private functions
     //------------------------------------------------------------    
 
-    var getFacetRow = function(d) { return d.plotFacets['row-facet'].value; }
-    var getFacetCol = function(d) { return d.plotFacets['col-facet'].value; }
-    var getFacetWrap = function(d) { return d.plotFacets.colWrap.value; }
+    var getFacetRow = function(d) { return d.plotFacets['row-facet']; }
+    var getFacetCol = function(d) { return d.plotFacets['col-facet']; }
+    var getFacetWrap = function(d) { return d.plotFacets.colWrap; }
     var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight]; }
 
 
@@ -134,10 +134,8 @@ var meowcow = (function() {
             _facetCols = Object.keys(_facets[_facetRows[0]]);
 
             _facetVals = guiVals.plotFacets;
-            _hVal = _facetVals['col-facet'].value;
-            _vVal = _facetVals['row-facet'].value;
-            _hLabel = _facetVals['col-facet'].label;
-            _vLabel = _facetVals['row-facet'].label;
+            _hVal = _facetVals['col-facet'];
+            _vVal = _facetVals['row-facet'];
         }
         jQuery('#warning').empty();
 
@@ -162,7 +160,7 @@ var meowcow = (function() {
                         if (_hVal && _vVal) {
                             title = _vVal + ' = ' + rowName + ' | ' + _hVal + ' = ' + colName;
                         } else if (_hVal || _vVal) {
-                            title = _vVal ? _vLabel + ' = ' + rowName : _hLabel + ' = ' + colName;    
+                            title = _vVal ? _vVal + ' = ' + rowName : _hVal + ' = ' + colName;    
                         }
                     }
 
@@ -217,7 +215,7 @@ var meowcow = (function() {
      */
     function populateChart(dat, sel, formVals, title, chartCount) {
 
-        var plotType = formVals.plotSetup.plotTypes.value;
+        var plotType = formVals.plotSetup.plotTypes;
         var plotOptions = config.plotTypes[plotType]; // lookup options for selected plot type
         var datReady = dat;
 
@@ -251,7 +249,7 @@ var meowcow = (function() {
             var optsSet = {};
             ['x','y','z'].forEach(function(d) {
                 var accessorName = plotOptions.setup[d].accessor;
-                var accessorAttr = formVals.plotSetup[d+'-axis'].value; // get the GUI value for the given chart axis option
+                var accessorAttr = formVals.plotSetup[d+'-axis']; // get the GUI value for the given chart axis option
                 if (accessorName) {
                     optsSet[accessorName] = accessorAttr;
                     var accessorFunc = function(d) { return d[accessorAttr] };
@@ -276,8 +274,6 @@ var meowcow = (function() {
                 chart[optionName](optionValue)
                 optsSet[optionName] = optionValue;
             })
-
-            console.log(optsSet);
 
             // set title
             if (title !== null && title) chart.title(title);

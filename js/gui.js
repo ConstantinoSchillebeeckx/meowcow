@@ -589,7 +589,7 @@ var GUI = (function() {
                             showButton(_filtersResetBtn) // activate reset button
                         })
                         slider.noUiSlider.on('end',function() { 
-                            _guiVals[_filtersTab][this.id] = this.get(); // store selected vals // TODO this.id doesn't work
+                            _guiVals[_filtersTab][this.target.id] = this.get(); // store selected vals // TODO this.id doesn't work
                         })
                     }
 
@@ -614,22 +614,20 @@ var GUI = (function() {
                     var opts = {values:colVals, accessor:col, label:col, type:colType, range:true, domClass:'col-sm-8'};
                     generateDateTimeInput(_filtersTab, opts);
 
-                    jQuery('#'+col+'DateTime').on('dp.change', function() { 
+                    jQuery('#'+col).on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
-                        var col = this.id.replace('DateTime','');
-                        var picker2 = this.id.replace('DateTime','2DateTime');
                         var picker1 = this.id;
-                        _guiVals[_filtersTab][col] = [
+                        var picker2 = this.id + '2';
+                        _guiVals[_filtersTab][picker1] = [
                             jQuery('#'+picker1).data('DateTimePicker').date(),
                             jQuery('#'+picker2).data("DateTimePicker").date()
                         ]
                     })
                     if (opts.range) jQuery('#'+col+'2DateTime').on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
-                        var col = this.id.replace('DateTime','');
-                        var picker1 = this.id.replace('2DateTime','DateTime');
+                        var picker1 = this.id.replace(/2$/,"");
                         var picker2 = this.id;
-                        _guiVals[_filtersTab][col] = [
+                        _guiVals[_filtersTab][picker1] = [
                             jQuery('#'+picker1).data('DateTimePicker').date(),
                             jQuery('#'+picker2).data("DateTimePicker").date()
                         ]
@@ -971,16 +969,16 @@ var GUI = (function() {
     function preRender() {
 
         // get GUI vals
-        getGUIvals();
+        getGUIvals(); // this updates _guiVals
+
+        console.log(_guiVals)
 
         // filter data if needed
         _filteredData = data;
-        if (_guiVals.plotFilter.filterOn) _filteredData = filterData(_filteredData, _guiVals.plotFilter);
-        console.log(_filteredData)
+        if (_guiVals.plotFilter.filterOn) _filteredData = filterData(_filteredData, _guiVals.plotFilter); // TODO need to wait for filter finish before formSubmit()
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
         if (!validateGUIsettings(_guiVals)) return;
-
 
         // everything looks good, let's render!
         formSubmit();
@@ -1017,6 +1015,7 @@ var GUI = (function() {
                 var rowVal = datRow[filter];
                 if (filterType == 'str') {
                     if (filterVals.indexOf(rowVal) == -1) keep = false;
+                    console.log(rowVal, filterVals, keep)
                 } else if (filterType == 'float' || filterType == 'int') {
                     console.log(rowVal, filterVals)
                     if (rowVal < filterVals[0] || rowVal > filterVals[1]) keep = false;
@@ -1115,7 +1114,7 @@ var GUI = (function() {
             .attr('class', function() { return 'datetimepickers ' + (opts.range ? ' col-sm-6' : ' col-sm-12');});
 
         var pickerDT = buildDateTimePicker(pickerCol, id);
-        var picker1 = '#'+id+'DateTime';
+        var picker1 = '#'+id;
 
         jQuery(picker1).datetimepicker(pickerOptions); // activate
 
@@ -1126,7 +1125,7 @@ var GUI = (function() {
                 .attr('class','col-sm-6 datetimepickers')
 
             var pickerDT2 = buildDateTimePicker(pickerCol, id+'2');
-            var picker2 = '#'+id+'2DateTime';
+            var picker2 = '#'+id+'2';
             jQuery(picker2).datetimepicker(pickerOptions); // activate
 
             jQuery(picker2).datetimepicker({
@@ -1384,7 +1383,7 @@ var GUI = (function() {
             .text(opts.format(opts.options.start));
 
         var slider = formGroup.append('div')
-            .attr('id',id+'SliderWrap')
+            .attr('id',id)
             .node()
 
         // generate slider
@@ -1401,7 +1400,7 @@ var GUI = (function() {
         }
 
         // initialize slider value store
-        // TODO all this min/max value replaceing is junky, and the reset button doesn't work on the sliders
+        // TODO all this min/max value replaceing is junky
         // need to refactor the code
         if (initValue.length == 2) {
             if (typeof minValueReplace !== 'undefined' && initValue[0] == opts.options.range.min) initValue[0] = minValueReplace;
