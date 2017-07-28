@@ -45,9 +45,7 @@ var meowcow = (function() {
         _facetCols,
         _facetVals,
         _hVal,
-        _vVal,
-        _hLabel,
-        _vLabel
+        _vVal
     
 
 
@@ -74,6 +72,9 @@ var meowcow = (function() {
         if (d) { colTypes = d; return this; }
         return colTypes; 
     }
+    this.charts = function() {
+        return _chartArray;
+    }
     this.run = function() {
 
         // build DOM wraps for GUI and plot area
@@ -90,7 +91,8 @@ var meowcow = (function() {
             .ignoreCol(ignoreCol)
             .formSubmit(renderPlot)
             .init();
-   
+  
+        return this; 
     }
 
 
@@ -121,7 +123,6 @@ var meowcow = (function() {
         //jQuery('.collapse').collapse() // collapse GUI
 
         var guiVals = _gui.getGUIvals();
-        
 
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
@@ -129,7 +130,7 @@ var meowcow = (function() {
             jQuery(canvas).empty(); 
 
             // generate facets and group data
-            _facets = setupFacetGrid(guiVals, data);
+            _facets = setupFacetGrid(guiVals, _gui.data());
             _facetRows = Object.keys(_facets);
             _facetCols = Object.keys(_facets[_facetRows[0]]);
 
@@ -239,6 +240,7 @@ var meowcow = (function() {
             if (typeof _chartArray[chartCount] !== 'undefined') {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
+                console.log('update')
             } else {
                 chart = nv.models[plotType]();
             }
@@ -252,8 +254,7 @@ var meowcow = (function() {
                 var accessorAttr = formVals.plotSetup[d+'-axis']; // get the GUI value for the given chart axis option
                 if (accessorName) {
                     optsSet[accessorName] = accessorAttr;
-                    var accessorFunc = function(d) { return d[accessorAttr] };
-                    chart[accessorName](accessorFunc);
+                    chart[accessorName](function(e) { return e[accessorAttr] });
                 }
             });
 
@@ -274,6 +275,7 @@ var meowcow = (function() {
                 chart[optionName](optionValue)
                 optsSet[optionName] = optionValue;
             })
+            console.log(optsSet)
 
             // set title
             if (title !== null && title) chart.title(title);

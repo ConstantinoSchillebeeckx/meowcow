@@ -15,7 +15,7 @@ var GUI = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM for GUI and plots
         config = {},        // config details for plots
-        data = false,       // data to plot
+        data = false,       // incoming pre-filtered data
         colTypes = {},      // overwrite column types with these
         formSubmit,         // form submit function for render
         ignoreCol = false   // columns to ignore in data
@@ -38,7 +38,7 @@ var GUI = (function() {
         _uploadModal = 'uploadModal',    // ID for upload modal
         _minRowHeight = 'minRowHeight',  // facet min row height slider ID
         _sliderValues = {},      // keeps track of all current slider values {tabName: {sliderName: val}, ...}
-        _filteredData = false,   // data to be plotted, could be filtered or not
+        _dataToRender = false,   // data to be plotted, could be filtered or not
         _guiVals = {}
 
     _guiVals[_setupTab] = {},
@@ -59,7 +59,7 @@ var GUI = (function() {
     }
     this.data = function(d) {
         if (d) { data = d; return this; }
-        return _filteredData ? _filteredData : data; 
+        return _dataToRender ? _dataToRender : data;
     }
     this.ignoreCol = function(d) {
         if (d) { ignoreCol = d; return this; }
@@ -623,7 +623,7 @@ var GUI = (function() {
                             jQuery('#'+picker2).data("DateTimePicker").date()
                         ]
                     })
-                    if (opts.range) jQuery('#'+col+'2DateTime').on('dp.change', function() { 
+                    if (opts.range) jQuery('#'+col+'2').on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
                         var picker1 = this.id.replace(/2$/,"");
                         var picker2 = this.id;
@@ -971,17 +971,18 @@ var GUI = (function() {
         // get GUI vals
         getGUIvals(); // this updates _guiVals
 
-        console.log(_guiVals)
-
-        // filter data if needed
-        _filteredData = data;
-        if (_guiVals.plotFilter.filterOn) _filteredData = filterData(_filteredData, _guiVals.plotFilter); // TODO need to wait for filter finish before formSubmit()
-
         // before rendering anything, let's ensure the selected GUI options make sense to render
         if (!validateGUIsettings(_guiVals)) return;
 
-        // everything looks good, let's render!
-        formSubmit();
+        // filter data if needed
+        if (_guiVals.plotFilter.filterOn) {
+            filterData(_dataToRender, _guiVals.plotFilter, function() {formSubmit()}); // will update _dataToRender
+        } else {
+
+            // everything looks good, let's render!
+            formSubmit();
+        }
+
 
     }
 
@@ -999,15 +1000,16 @@ var GUI = (function() {
      *   - date: formatted like dropdowns, however there will
      *     be a second obj key named like the first but with 
      *     an appended '2', since dates are setup as ranges.
+     * @param {func} _callback
      * 
-     * @return {list} - filtered data
+     * @return void - sets _dataToRender variable
      */
-    function filterData(dat, filters) {
+    function filterData(dat, filters, _callback) {
 
         delete filters.filterOn;
         
         // go through data and apply filters
-        return dat.filter(function(datRow) {
+        _dataToRender = dat.filter(function(datRow) {
             var keep = true; 
             Object.keys(filters).forEach(function(filter) {
                 var filterType = colTypes[filter]; // str, datetime, or float
@@ -1015,9 +1017,7 @@ var GUI = (function() {
                 var rowVal = datRow[filter];
                 if (filterType == 'str') {
                     if (filterVals.indexOf(rowVal) == -1) keep = false;
-                    console.log(rowVal, filterVals, keep)
                 } else if (filterType == 'float' || filterType == 'int') {
-                    console.log(rowVal, filterVals)
                     if (rowVal < filterVals[0] || rowVal > filterVals[1]) keep = false;
                 } else if (filterType == 'datetime' || filterType == 'date') {
                     rowVal = moment(rowVal);
@@ -1026,6 +1026,8 @@ var GUI = (function() {
             });
             return keep;
         })
+
+        if (typeof _callback === "function") _callback();
 
     }
 
@@ -1051,7 +1053,6 @@ var GUI = (function() {
         // check that selected plot type is an option in nv.models (should be a key) TODO
 
         // TODO further checks
-        console.log(guiVals)
 
         if (facetVals.facetOn || wrapVal > 0) {
             var colVal = facetVals['col-facet']
@@ -1165,13 +1166,13 @@ var GUI = (function() {
 
         var picker = formGroup.append('div')
             .attr('class','input-group date')
-            .attr('id',id+'DateTime');
+            .attr('id',id);
 
         picker.append('input')
             .attr('type','text')
             .attr('class','form-control')
-            .attr('id',id)
-            .attr('name',id);
+            //.attr('id',id)
+            //.attr('name',id);
         
         picker.append('span')
             .attr('class','input-group-addon')
