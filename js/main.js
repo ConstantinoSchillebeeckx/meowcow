@@ -22,7 +22,7 @@ var meowcow = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM into which to render everything
         config = {},        // config details for plots
-        data = {},          // data to plot
+        data = {},           // data to plot
         colTypes = {},      // overwrite column types with these
         ignoreCol = false   // columns to ignore in data
 
@@ -257,7 +257,14 @@ var meowcow = (function() {
                     chart[accessorName](function(e) { return e[accessorAttr] });
                 }
             });
-
+/*
+            chart['value'](function(e) { return e.Weight })
+            if (chartUpdate) {
+                chart['x'](function(e) { return e.Drug })
+            } else {
+                chart['x'](function(e) { return e.Study })
+            }
+*/
             // set chart options
             plotOptions.options.forEach(function(d) {
                 var optionName = d.accessor;

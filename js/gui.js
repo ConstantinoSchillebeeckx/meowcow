@@ -15,7 +15,7 @@ var GUI = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM for GUI and plots
         config = {},        // config details for plots
-        data = false,       // incoming pre-filtered data
+        data = false,        // incoming pre-filtered data
         colTypes = {},      // overwrite column types with these
         formSubmit,         // form submit function for render
         ignoreCol = false   // columns to ignore in data
