@@ -1,6 +1,6 @@
 // setup GUI
 var guiSetup = {
-    plotTypes: {
+    plotTypes: {/*
         scatterChart: {
             label: 'Scatter',
             setup: {
@@ -15,7 +15,7 @@ var guiSetup = {
                 z: {
                 } 
             }
-        },
+        },*/
         distroPlotChart: { // must be a named NVD3 plot type e.g. scatterChart
             label: 'Distribution', // if not provided, will use distroPlotChart
             allowFacets: true,

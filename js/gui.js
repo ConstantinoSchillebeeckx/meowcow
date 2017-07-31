@@ -39,7 +39,8 @@ var GUI = (function() {
         _minRowHeight = 'minRowHeight',  // facet min row height slider ID
         _sliderValues = {},      // keeps track of all current slider values {tabName: {sliderName: val}, ...}
         _dataToRender = false,   // data to be plotted, could be filtered or not
-        _guiVals = {}
+        _guiVals = {},           // storage for gui values
+        _guiVals0                // gui values of previous rendered plot
 
     _guiVals[_setupTab] = {},
     _guiVals[_optionsTab] = {},
@@ -90,6 +91,12 @@ var GUI = (function() {
         }
 
         return this;
+    }
+    this.facetOptionsHaveChanged = function() {
+        return JSON.stringify(_guiVals0.plotFacets) !== JSON.stringify(_guiVals.plotFacets);
+    }
+    this.filterOptionsHaveChanged = function() {
+        return _guiVals0.plotFilters !== _guiVals.plotFilters;
     }
 
     /**
@@ -968,15 +975,21 @@ var GUI = (function() {
      */
     function preRender() {
 
+        _guiVals0 = JSON.parse(JSON.stringify(_guiVals)) // deep copy
+
         // get GUI vals
         getGUIvals(); // this updates _guiVals
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
         if (!validateGUIsettings(_guiVals)) return;
 
+        console.log(_guiVals)
+
         // filter data if needed
-        if (_guiVals.plotFilter.filterOn) {
-            filterData(_dataToRender, _guiVals.plotFilter, function() {formSubmit()}); // will update _dataToRender
+        if (_guiVals.plotFilter.filterOn && filterOptionsHaveChanged()) {
+            filterData(data, _guiVals.plotFilter, function() {
+                formSubmit()
+            }); // will update _dataToRender
         } else {
 
             // everything looks good, let's render!

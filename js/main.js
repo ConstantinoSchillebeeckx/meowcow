@@ -36,10 +36,6 @@ var meowcow = (function() {
         _renderBtn='renderBtn', // ID for GUI render button
         _chartArray=[],         // contains any renderd NVD3 chart objects
         _minRowHeight = 'minRowHeight',  // facet min row height slider ID
-        _guiFacetCols = false,
-        _guiFacetRows = false,
-        _guiFacetWrap = false,
-        _guiFacetMinHeight = false,
         _facets,
         _facetRows,
         _facetCols,
@@ -126,11 +122,16 @@ var meowcow = (function() {
 
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
-        if (facetOptionsHaveChanged(guiVals)) { 
+        // TODO - when changing a filter after data has already been filtered, 
+        // the code block below should run so that the data for each facet is updated
+        // there should also be a function that then checks if the facets should first be
+        // cleared (since new data is being used)
+        if (_gui.facetOptionsHaveChanged()) { 
+            
             jQuery(canvas).empty(); 
+            _facets = setupFacetGrid(guiVals, _gui.data());
 
             // generate facets and group data
-            _facets = setupFacetGrid(guiVals, _gui.data());
             _facetRows = Object.keys(_facets);
             _facetCols = Object.keys(_facets[_facetRows[0]]);
 
@@ -141,11 +142,6 @@ var meowcow = (function() {
         jQuery('#warning').empty();
 
 
-        // store current GUI facet options so we can compare for updates
-        _guiFacetCols = getFacetRow(guiVals);
-        _guiFacetRows = getFacetCol(guiVals);
-        _guiFacetWrap = getFacetWrap(guiVals);
-        _guiFacetMinHeight = getFacetMinHeight(guiVals)
 
         // draw plot in each facet
         var chartCount = 0;
@@ -153,6 +149,7 @@ var meowcow = (function() {
             _facetCols.forEach(function(colName,j) {
 
                 var facetDat = _facets[rowName][colName];
+                console.log(facetDat)
 
                 if (typeof facetDat !== 'undefined') {
 
@@ -182,24 +179,6 @@ var meowcow = (function() {
 
 
 
-    /**
-     * Return true if facet options have been changed since previous 
-     * render; this is used to reset all the plots/facets for
-     * re-drawing.
-     *
-     * @return - true if facet options have been changed; false
-     *   otherwise.
-     */
-    function facetOptionsHaveChanged(guiVals) {
-        if (_guiFacetCols !== getFacetRow(guiVals) || 
-            _guiFacetRows !== getFacetCol(guiVals) || 
-            _guiFacetWrap !== getFacetWrap(guiVals) || 
-            _guiFacetMinHeight !== getFacetMinHeight(guiVals)) {
-            console.log('facet updated');
-            return true;
-        }
-        return false
-    }
 
     /**
      * Once all GUI options and data are set, we can
@@ -218,12 +197,12 @@ var meowcow = (function() {
 
         var plotType = formVals.plotSetup.plotTypes;
         var plotOptions = config.plotTypes[plotType]; // lookup options for selected plot type
-        var datReady = dat;
 
         // nvd3 expects SVG to exist already
         d3.select(sel + ' svg');
 
         // parse data if needed before plotting
+        var datReady = dat;
         var parseFunc = plotOptions.parseData;
         if (typeof parseFunc === "function") {
             datReady = parseFunc(dat);
@@ -240,7 +219,7 @@ var meowcow = (function() {
             if (typeof _chartArray[chartCount] !== 'undefined') {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
-                console.log('update')
+                console.log('loading previous chart')
             } else {
                 chart = nv.models[plotType]();
             }
@@ -257,14 +236,7 @@ var meowcow = (function() {
                     chart[accessorName](function(e) { return e[accessorAttr] });
                 }
             });
-/*
-            chart['value'](function(e) { return e.Weight })
-            if (chartUpdate) {
-                chart['x'](function(e) { return e.Drug })
-            } else {
-                chart['x'](function(e) { return e.Study })
-            }
-*/
+
             // set chart options
             plotOptions.options.forEach(function(d) {
                 var optionName = d.accessor;
