@@ -1,6 +1,7 @@
 // setup GUI
 var guiSetup = {
     useToyData: true,
+    missing: "", // characters to treat as missing
     plotTypes: {
         lineChart: {
             label: 'Line',

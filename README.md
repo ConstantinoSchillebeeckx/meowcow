@@ -1,11 +1,19 @@
 # meowcow
 
+Quickly visualize multi-dimensional data through various charting types such as:
+
+- bar
+- box
+- violin
+- scatter
+- line 
+
 ## TODO
 
 - docs
 - make setup: as a list instead of an object e.g. setup: [{name:'x', type:'quantitative', accessor:'x'},{}]
 - readme
-- add new tab that describes that loaded dataset (each column type, range of data, etc, source/description if toy)
+- handle missing data - added a 'missing' option in config
 
 overal chart options:
 - log scale axes
@@ -16,14 +24,6 @@ overal chart options:
 - title
 - focus
 
-
-Quickly visualize multi-dimensional data through various charting types such as:
-
-- bar
-- box
-- violin
-- scatter
-- line 
 
 ## Input data
 
@@ -47,29 +47,24 @@ var dat = [["1","81","9.68","2015-02-05","I","W55","alpha","0"],["2","4","13.3",
 
 Note that data can be input as strings and will be converted to the proper type (`int` of `float`) automatically.
 
-#### 2. attribute types
-
-A dictionary defining the columns of the input data as well as their data type; for the above example, this would look like:
-
-```javascript
-var colTypes = {
-    ID: 'excluded',
-    Subject: 'str',
-    Value: 'float',
-    Date: 'datetime',
-    Study: 'str',
-    Treatment: 'str',
-    StudyType: 'str',
-    Day: 'int',
-}
-```
-
 Note that in the above example, our data comes with a surrogate key column `ID` which we want to ignore - specify this attribute as an `"excluded"` data type.
 
 ## Usage
 
-An example [index.html] has been generated to show usage. The DOM requires 3 divs be present:
+Designate a DOM element into which the GUI and plots should be rendered, e.g. `<body class='container-fluid' id='renderHere'></body>`
 
-1. ```<div id="gui"></div> <!-- GUI container -->```
-2. ```<div id="warning"></div> <!-- warnings/errors container -->```
-3. ```<div id="canvas"></div> <!-- plot container -->```
+Then, instantiate everything (on load) with something like:
+```javascript
+<script>
+    $(function() {
+
+        var moo = meowcow()
+            .container('#renderHere')
+            .data(inputDat) // declared in js/tall.js - if left unspecified, a modal will be loaded which allows user to upload a delimited file
+            .config(guiSetup) // declared in js/config.js
+            .ignoreCol(['_UID']) // ignore these columns in input data
+            .colTypes({Subject: 'str'}) // overwrite column type
+            .run();
+    });
+</script>
+```

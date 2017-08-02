@@ -33,6 +33,7 @@ var GUI = (function() {
         _facetsTab = 'plotFacets',       // ID for plot facets tab
         _optionsTab = 'plotOptions',     // ID for plot options tab
         _filtersTab = 'plotFilter',      // ID for plot filters tab
+        _dataTab = 'plotData',           // ID for data setup tab
         _facetResetBtn = 'facetsBtn',    // ID for facet reset button
         _filtersResetBtn = 'filtersBtn', // ID for filter reset button
         _uploadModal = 'uploadModal',    // ID for upload modal
@@ -550,18 +551,19 @@ var GUI = (function() {
                 .attr('class','lead')
                 .text(text)
 
+            var btnRow = modalBody.append('div')
+                .attr('class','row')
+                .append('div')
+                .attr('class','col-sm-12')
+
             if (config.useToyData) {
-                var toyRow = modalBody.append('div')
-                    .attr('class','row')
-                    .append('div')
-                    .attr('class','col-sm-12')
                     
-                toyRow.append('h4')
+                btnRow.append('h4')
                     .html('Datasets:')
 
                 Object.keys(toyData).forEach(function(d) {
 
-                    toyRow.append('label')
+                    btnRow.append('label')
                         .attr('id',d+'ToyData')
                         .attr('class','btn btn-info btn-file')
                         .style('margin-right','5px')
@@ -570,11 +572,7 @@ var GUI = (function() {
                 })
             }
 
-            var modalFooter = modal.append('div')
-                .attr('class','modal-footer')
-
-
-            modalFooter.append('label')
+            btnRow.append('label')
                 .attr('class','btn btn-primary btn-file')
                 .text('Choose file')
                 .append('input')
@@ -869,6 +867,47 @@ var GUI = (function() {
         }
     }
 
+    /*
+     * Create a tab that details the loaded
+     * data including the columns, column
+     * type and column values
+     */
+    function makeDataTab() {
+
+        // add tab and container
+        var note = 'The currently loaded that has the following attributes:';
+        addTab(_dataTab, 'Data details', note);
+
+        var ol = d3.select('#'+_dataTab).append('div')
+            .attr('class','col-sm-12')
+            .append('ol')
+
+        Object.keys(colTypes).forEach(function(attrName) {
+       
+            console.log(attrName) 
+            var attrType = colTypes[attrName];
+
+            var typeText = 'type: <code>' + attrType + '</code> ';
+            var valText = '';
+
+            if (attrType == 'int' || attrType == 'float') {
+                valText = 'range: [' + d3.extent(_unique[attrName]) + ']';
+            } else if (attrType == 'str') {
+                valText = 'values: <mark>' + _unique[attrName].join(',') + '</mark>';
+            } // TODO formatting for datetime and date
+
+            var ul = ol.append('li')
+                .html(attrName)
+                .append('ul')
+
+            ul.append('li')
+                .html(typeText);
+            ul.append('li')
+                .html(valText);
+        })
+
+    }
+
 
     /**
      * Parse setup and generate the remaining
@@ -886,6 +925,7 @@ var GUI = (function() {
         makeFacetsTab();
         makeOptionsTab();
         makeFiltersTab();
+        makeDataTab();
         jQuery("#" + _setupTab + 'Tab a').tab('show'); // show setup tab
 
     }
