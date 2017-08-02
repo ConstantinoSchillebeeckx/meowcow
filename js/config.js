@@ -1,21 +1,90 @@
 // setup GUI
 var guiSetup = {
-    plotTypes: {/*
+    useToyData: true,
+    plotTypes: {
+        lineChart: {
+            label: 'Line',
+            setup: {
+                x: {
+                    type: 'quantitative',
+                    accessor: 'x', 
+                },
+                y: {
+                    type: 'quantitative',
+                    accessor: 'y', 
+                },
+                z: {
+                    type: 'ordinal',
+                    accessor: 'lineGroup', 
+                    label: 'Color group'
+                } 
+            },
+            options: [ // plot options: isArea, defined; data options: area, classed, 
+                {
+                    accessor: 'interpolate',
+                    label: 'Interpolate',
+                    type: 'select',
+                    values: ['linear','step-before','step-after','basis','bundle','cardinal','monotone']
+                },
+                {
+                    accessor: 'clipEdge',
+                    label: 'Clip edge',
+                    type: 'toggle'
+                },
+                {
+                    accessor: 'useInteractiveGuideline',
+                    label: 'Interactive guideline',
+                    type: 'toggle'
+                },
+                {
+                    accessor: 'focusEnable',
+                    label: 'Enable focus',
+                    type: 'toggle'
+                },
+                /*{ TODO implement
+                    accessor: 'strokeWidth',
+                    label: 'Stroke width',
+                    type: 'slider',
+                    options: {start: 1.5, range: {'min':0.1, 'max':5}, step:.1, connect: [true, false]},
+                    format: function(d) { return '[' + parseFloat(d) + ']' }
+                }*/
+            ]
+        },
         scatterChart: {
             label: 'Scatter',
             setup: {
                 x: {
                     type: 'quantitative',
-                    accessor: 'value', 
+                    accessor: 'x', 
                 },
                 y: {
                     type: 'quantitative',
-                    accessor: 'value', 
+                    accessor: 'y', 
                 },
                 z: {
+                    type: 'ordinal',
+                    accessor: 'pointGroup', 
+                    label: 'Color group'
                 } 
-            }
-        },*/
+            },
+            options: [
+                {
+                    accessor: 'showDistX',
+                    label: 'Show X distr.',
+                    type: 'toggle'
+                },
+                {
+                    accessor: 'showDistY',
+                    label: 'Show Y distr.',
+                    type: 'toggle'
+                },
+                {
+                    accessor: 'showLabels', // need to modify scatter.js https://github.com/ConstantinoSchillebeeckx/nvd3/blob/distrochart/src/models/scatter.js#L579
+                    label: 'Show labels',
+                    type: 'toggle'
+                },
+            ]
+        },
         distroPlotChart: { // must be a named NVD3 plot type e.g. scatterChart
             label: 'Distribution', // if not provided, will use distroPlotChart
             allowFacets: true,

@@ -1,5 +1,22 @@
 # meowcow
 
+## TODO
+
+- docs
+- make setup: as a list instead of an object e.g. setup: [{name:'x', type:'quantitative', accessor:'x'},{}]
+- readme
+- add new tab that describes that loaded dataset (each column type, range of data, etc, source/description if toy)
+
+overal chart options:
+- log scale axes
+- show labels
+- manually define labels
+- axis left/right or top/bottom
+- tick format?
+- title
+- focus
+
+
 Quickly visualize multi-dimensional data through various charting types such as:
 
 - bar

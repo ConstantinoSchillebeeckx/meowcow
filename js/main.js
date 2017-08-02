@@ -22,7 +22,7 @@ var meowcow = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM into which to render everything
         config = {},        // config details for plots
-        data = {},           // data to plot
+        data = false        // data to plot
         colTypes = {},      // overwrite column types with these
         ignoreCol = false   // columns to ignore in data
 
@@ -120,15 +120,13 @@ var meowcow = (function() {
 
         var guiVals = _gui.getGUIvals();
 
+
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
-        // TODO - when changing a filter after data has already been filtered, 
-        // the code block below should run so that the data for each facet is updated
-        // there should also be a function that then checks if the facets should first be
-        // cleared (since new data is being used)
-        if (_gui.facetOptionsHaveChanged()) { 
-            
-            jQuery(canvas).empty(); 
+        // of if the filtering is changed
+        if (_gui.facetOptionsHaveChanged() || _gui.filterOptionsHaveChanged()) { 
+           
+            if (_gui.facetOptionsHaveChanged()) jQuery(canvas).empty();  // clear out facets if facet options changed
             _facets = setupFacetGrid(guiVals, _gui.data());
 
             // generate facets and group data
@@ -149,7 +147,6 @@ var meowcow = (function() {
             _facetCols.forEach(function(colName,j) {
 
                 var facetDat = _facets[rowName][colName];
-                console.log(facetDat)
 
                 if (typeof facetDat !== 'undefined') {
 
@@ -238,22 +235,24 @@ var meowcow = (function() {
             });
 
             // set chart options
-            plotOptions.options.forEach(function(d) {
-                var optionName = d.accessor;
-                var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
+            if ('options' in plotOptions) {
+                plotOptions.options.forEach(function(d) {
+                    var optionName = d.accessor;
+                    var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
 
-                // if GUI option was an array (for a single handle slider) grab the only element
-                if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
+                    // if GUI option was an array (for a single handle slider) grab the only element
+                    if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
 
-                // if GUI option was a select input type, data comes in as an object, grab just the values
-                if (typeof optionValue === 'object' && optionValue != null) optionValue = optionValue.value;
+                    // if GUI option was a select input type, data comes in as an object, grab just the values
+                    if (typeof optionValue === 'object' && optionValue != null) optionValue = optionValue.value;
 
-                // convert bool string into bool
-                optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
+                    // convert bool string into bool
+                    optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
 
-                chart[optionName](optionValue)
-                optsSet[optionName] = optionValue;
-            })
+                    chart[optionName](optionValue)
+                    optsSet[optionName] = optionValue;
+                })
+            }
             console.log(optsSet)
 
             // set title
@@ -261,13 +260,14 @@ var meowcow = (function() {
 
             //formatAxisTitle(chart, guiVals);
             //formatTooltip(chart, guiVals);
+            console.log(datReady)
+            var datum = d3.select(sel + ' svg')
+                            .datum(datReady)
 
             if (chartUpdate) {
                 chart.update();
             } else {
-                d3.select(sel + ' svg')
-                    .datum(datReady)
-                    .call(chart);
+                datum.call(chart);
             }
 
             nv.utils.windowResize(chart.update);
@@ -338,19 +338,27 @@ var meowcow = (function() {
 
         // generate DOM elements
         var facetCount = 0;
+        var plotCount = 1;
         for (var i = 0; i < numRows; i++) {
 
-            var row = plotDom.append('div')
-                .attr('class', 'facetRow')
-                .attr('id', 'row_' + i);
+            if (d3.select('#row_'+i).empty()) { // dont generate row if it already exists
+                var row = plotDom.append('div')
+                    .attr('class', 'facetRow')
+                    .attr('id', 'row_' + i);
 
-            for (var j = 0; j < numCols; j++) {
-                row.append('div')
-                    .attr('class', facetCount%2==0 ? 'facet fill' : 'facet')
-                    .attr('id','facet_'+facetCount)
-                    .style({height: rowHeight + 'px', width: colWidth + 'px'})
-                    .append('svg');
-                facetCount++;
+                if (d3.select('#facet_'+facetCount).empty()) {
+                    for (var j = 0; j < numCols; j++) {
+                        row.append('div')
+                            .attr('class', facetCount%2==0 ? 'facet fill' : 'facet')
+                            .attr('id','facet_'+facetCount)
+                            .style({height: rowHeight + 'px', width: colWidth + 'px'})
+                            .append('svg')
+                            //.attr('id','plot_'+plotCount);
+                        facetCount++;
+
+                        plotCount += 1;
+                    }
+                }
             }
 
             // this will prevent the final row from filling with facets

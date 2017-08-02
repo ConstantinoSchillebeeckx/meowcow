@@ -18,7 +18,7 @@ var GUI = (function() {
         data = false,        // incoming pre-filtered data
         colTypes = {},      // overwrite column types with these
         formSubmit,         // form submit function for render
-        ignoreCol = false   // columns to ignore in data
+        ignoreCol = []      // columns to ignore in data
 
 
     //============================================================
@@ -46,6 +46,8 @@ var GUI = (function() {
     _guiVals[_optionsTab] = {},
     _guiVals[_filtersTab] = {},
     _guiVals[_facetsTab] = {}
+    _guiVals0 = JSON.parse(JSON.stringify(_guiVals)) // deep copy
+
 
     //============================================================
     // Public getters & setters
@@ -59,7 +61,7 @@ var GUI = (function() {
         return config; 
     }
     this.data = function(d) {
-        if (d) { data = d; return this; }
+        if (d || d === false) { data = d; return this; }
         return _dataToRender ? _dataToRender : data;
     }
     this.ignoreCol = function(d) {
@@ -96,9 +98,18 @@ var GUI = (function() {
         return JSON.stringify(_guiVals0.plotFacets) !== JSON.stringify(_guiVals.plotFacets);
     }
     this.filterOptionsHaveChanged = function() {
-        return _guiVals0.plotFilters !== _guiVals.plotFilters;
+        console.log(_guiVals0.plotFilter, _guiVals.plotFilter)
+        return JSON.stringify(_guiVals0.plotFilter) !== JSON.stringify(_guiVals.plotFilter);
     }
+    this.getGUIvals = function() { return _guiVals };
 
+
+
+
+
+    //============================================================
+    // Private functions
+    //------------------------------------------------------------    
     /**
      * Call to serializeArray() on the GUI form to return
      * all the current settings of the GUI. 
@@ -117,33 +128,29 @@ var GUI = (function() {
      *     1 for a single value slider, or 2 for a min/max slider
      *
      */
-    this.getGUIvals = function() {
+    var getGUIvals = function() {
+
     
         jQuery('form div.tab-pane').each(function() {
             var tab = this.id;
 
-            if (tab != _filtersTab) { // gui vals from filtersTab are set with their own onChange event
+            // parse select inputs
+            var selects = jQuery(this).find(':input').serializeArray();
 
-                // parse select inputs
-                var tmp = jQuery(this).find(':input').serializeArray();
 
-                // group selects together so multiple select
-                // gets stored as an array
-                var selects = d3.nest()
-                .key(function(d) { return d.name; })
-                .entries(tmp);
+            var checkBoxes = jQuery(this).find('input[type="checkbox"]');
+
+            // gui vals for filtersTab are set differetly.
+            // since by default everything is selected we are only
+            // interestd in changes from this state; that is, 
+            // capture filters that do not have 'all' selected
+            if (tab != _filtersTab) { 
 
                 selects.forEach(function(d) {
-                    var values = d.values.map(function(e) { return e.value == "" ? null : e.value});
-
-                    // only filtersTab has multiple select, so the other
-                    // tabs will have just a single value, store that value
-                    if (tab != _filtersTab) values = values[0];
-                    _guiVals[tab][d.key] = values;
+                    _guiVals[tab][d.name] = d.value == "" ? null : d.value;
                 });
 
                 // parse checkboxes
-                var checkBoxes = jQuery(this).find('input[type="checkbox"]');
                 if (checkBoxes.length) {
                     checkBoxes.each(function(d) {
                         _guiVals[tab][this.id] = this.checked;
@@ -163,7 +170,26 @@ var GUI = (function() {
                 }
 
             } else {
-                _guiVals[_filtersTab].filterOn = dataFilterOn();
+
+                // group selects together so multiple select
+                // gets stored as an array
+                var selects = d3.nest()
+                .key(function(d) { return d.name; })
+                .entries(selects);
+
+                selects.forEach(function(d) {
+                    var values = d.values.map(function(e) { return e.value == "" ? null : e.value});
+                    var allPossibleValues = _unique[d.key];
+
+                    if (!arraysEqual(values, allPossibleValues)) {
+                        _guiVals[tab][d.key] = values;
+                    } else if (d.key in _guiVals[tab]) { // remove filter if previously on
+                        delete _guiVals[tab][d.key];
+                    }
+                });
+
+                // TODO store values for slider 
+
             }
         })
 
@@ -172,10 +198,17 @@ var GUI = (function() {
     }
 
 
+    // https://stackoverflow.com/a/16436975/1153897
+    function arraysEqual(a, b) {
+        if (a === b) return true;
+        if (a == null || b == null) return false;
+        if (a.length != b.length) return false;
 
-    //============================================================
-    // Private functions
-    //------------------------------------------------------------    
+        for (var i = 0; i < a.length; ++i) {
+            if (convertToNumber(a[i]) !== convertToNumber(b[i])) return false;
+        }
+        return true;
+    }
 
     /**
      * Return an obj of plotTypes available in the specified config.
@@ -192,7 +225,7 @@ var GUI = (function() {
         return tmp;
     };
 
-    var dataFilterOn = function() { return jQuery('#'+_filtersResetBtn).is(':visible'); }
+    var dataFilterOn = function() { return jQuery('#'+_filtersResetBtn).attr('style') == "display: none;"; } // can't use .is(":visible") because tab must be active for that to work
     var getPlotConfig = function() { return config.plotTypes[getPlotType()]; }; // get config for currently selected plot
     var getPlotOptions = function(plotType) { return getPlotConfig().options; }; // get options for current plot
     var getPlotType = function() { return jQuery('#'+_plotTypesID).val(); }; // get currently selected plot type
@@ -343,6 +376,23 @@ var GUI = (function() {
     }
 
     /**
+     * load the selected toy data set into the proper
+     * data variables and initialize the gui/plot
+     *
+     * NOTE: datasets are stored in js/toyData.js
+     *
+     * @param {str} set - name of dataset to load
+     *
+     */
+    function loadToydata(set) {
+        data = toyData[set].data;
+        ignoreCol = [];
+        colTypes = {};
+        init();
+        jQuery('#'+_uploadModal).modal('hide');
+    }
+
+    /**
      * onClick event handler for uploading data, called
      * when users selects a file to upload from the
      * upload modal. 
@@ -489,8 +539,8 @@ var GUI = (function() {
 
             var modalBody = modal.append('div')
                 .attr('class','modal-body')
-                
-            var text = "Looks like you don't have any data loaded, please upload some.";
+            
+            var text = "Looks like you don't have any data loaded, " + (config.useToyData ? 'please choose either a toy data set or upload your own file.' : 'please upload your own data.')
             modalBody.append('div')
                 .attr('class','row')
                 .append('div')
@@ -499,6 +549,26 @@ var GUI = (function() {
                 .append('h4')
                 .attr('class','lead')
                 .text(text)
+
+            if (config.useToyData) {
+                var toyRow = modalBody.append('div')
+                    .attr('class','row')
+                    .append('div')
+                    .attr('class','col-sm-12')
+                    
+                toyRow.append('h4')
+                    .html('Datasets:')
+
+                Object.keys(toyData).forEach(function(d) {
+
+                    toyRow.append('label')
+                        .attr('id',d+'ToyData')
+                        .attr('class','btn btn-info btn-file')
+                        .style('margin-right','5px')
+                        .text(function() { return d; })
+                        .on('click',function() { loadToydata(d)} )
+                })
+            }
 
             var modalFooter = modal.append('div')
                 .attr('class','modal-footer')
@@ -512,7 +582,7 @@ var GUI = (function() {
                 .style('display','none')
                 .on('change',uploadData)
 
-            jQuery('#'+_uploadModal).modal().show();
+            jQuery('#'+_uploadModal).modal('show');
         }
             
     }
@@ -596,7 +666,9 @@ var GUI = (function() {
                             showButton(_filtersResetBtn) // activate reset button
                         })
                         slider.noUiSlider.on('end',function() { 
-                            _guiVals[_filtersTab][this.target.id] = this.get(); // store selected vals // TODO this.id doesn't work
+                            _guiVals[_filtersTab].filterOn = true;
+                            //_guiVals0[_filtersTab][this.target.id] = _guiVals[_filtersTab][this.target.id];
+                            //_guiVals[_filtersTab][this.target.id] = this.get(); // store selected vals
                         })
                     }
 
@@ -615,7 +687,9 @@ var GUI = (function() {
                     select = generateFormSelect(_filtersTab, opts);
                     select.on('change',function() { 
                         showButton(_filtersResetBtn) // activate reset button
-                        _guiVals[_filtersTab][this.id] = jQuery(this).val(); // store selected vals
+                        _guiVals[_filtersTab].filterOn = true;
+                        //_guiVals0[_filtersTab][this.id] = _guiVals[_filtersTab][this.id];
+                        //_guiVals[_filtersTab][this.id] = jQuery(this).val(); // store selected vals
                     });
                 } else if (colType == 'datetime') {
                     var opts = {values:colVals, accessor:col, label:col, type:colType, range:true, domClass:'col-sm-8'};
@@ -623,21 +697,25 @@ var GUI = (function() {
 
                     jQuery('#'+col).on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
+                        _guiVals[_filtersTab].filterOn = true;
                         var picker1 = this.id;
                         var picker2 = this.id + '2';
+                     /*   _guiVals0[_filtersTab][picker1] = _guiVals[_filtersTab][picker1]
                         _guiVals[_filtersTab][picker1] = [
                             jQuery('#'+picker1).data('DateTimePicker').date(),
                             jQuery('#'+picker2).data("DateTimePicker").date()
-                        ]
+                        ] */
                     })
                     if (opts.range) jQuery('#'+col+'2').on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
                         var picker1 = this.id.replace(/2$/,"");
                         var picker2 = this.id;
+                        _guiVals[_filtersTab].filterOn = true;
+                      /*  _guiVals0[_filtersTab][picker1] = _guiVals[_filtersTab][picker1]
                         _guiVals[_filtersTab][picker1] = [
                             jQuery('#'+picker1).data('DateTimePicker').date(),
                             jQuery('#'+picker2).data("DateTimePicker").date()
-                        ]
+                        ] */
                     })
                 }
             }
@@ -981,9 +1059,7 @@ var GUI = (function() {
         getGUIvals(); // this updates _guiVals
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
-        if (!validateGUIsettings(_guiVals)) return;
-
-        console.log(_guiVals)
+        if (!validateGUIsettings(_guiVals)) console.log('skip errors'); // return;
 
         // filter data if needed
         if (_guiVals.plotFilter.filterOn && filterOptionsHaveChanged()) {
@@ -993,6 +1069,7 @@ var GUI = (function() {
         } else {
 
             // everything looks good, let's render!
+            _dataToRender = data;
             formSubmit();
         }
 
@@ -1513,7 +1590,7 @@ var GUI = (function() {
                 var slider = d3.select('#'+tabID).select('.noUi-target').node() // TODO will only select a single slider, need to select all, and reset all
                 if (slider) slider.noUiSlider.reset();
             } else if (colType == 'datetime') {
-                jQuery('#'+col+'DateTime').data("DateTimePicker").date(moment(_unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)
+                jQuery('#'+col).data("DateTimePicker").date(moment(_unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)
             }
         }
 
@@ -1530,6 +1607,10 @@ var GUI = (function() {
         d3.select('#' + btnID)
             .attr('disabled','disabled')
             .style('display','none');
+
+        
+        _guiVals0[_filtersTab].filterOn = _guiVals[_filtersTab].filterOn;
+        _guiVals[_filtersTab].filterOn = false;
 
         return false;
     }
