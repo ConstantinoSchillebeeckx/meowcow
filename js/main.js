@@ -77,7 +77,6 @@ var meowcow = (function() {
         if (jQuery('#'+_guiWrap).length == 0) d3.select(container).append('div').attr('id',_guiWrap).attr('class','row')
         if (jQuery('#'+_canvasWrap).length == 0) d3.select(container).append('div').attr('id',_canvasWrap)
 
-
         // build gui
         _gui = GUI()
             .container('#'+_guiWrap)
@@ -86,7 +85,9 @@ var meowcow = (function() {
             .colTypes(colTypes)
             .ignoreCol(ignoreCol)
             .formSubmit(renderPlot)
-            .init();
+            //.init();
+
+        console.log(ignoreCol, data)
   
         return this; 
     }

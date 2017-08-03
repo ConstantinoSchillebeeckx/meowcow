@@ -1,6 +1,16 @@
-
-
 var GUI = (function() {
+    //============================================================
+    // GUI class
+    //------------------------------------------------------------
+    /*
+        TODO
+        Tabs:
+        - setup
+        - options
+        - facets
+        - filter
+        - data details
+    */
 
     //============================================================
     // Semantics
@@ -83,9 +93,10 @@ var GUI = (function() {
         if (!data) { 
             showModal();
         } else {
+            console.log(ignoreCol)
             // prep data
             if (!_unique) { // don't need to prep data if modal was used since it already does it
-                colTypes = findColumnTypes(data,ignoreCol,colTypes);
+                colTypes = findColumnTypes(data, ignoreCol, colTypes);
                 _unique = getAllUnique(data, colTypes);
             }
 
@@ -230,12 +241,11 @@ var GUI = (function() {
     var getPlotConfig = function() { return config.plotTypes[getPlotType()]; }; // get config for currently selected plot
     var getPlotOptions = function(plotType) { return getPlotConfig().options; }; // get options for current plot
     var getPlotType = function() { return jQuery('#'+_plotTypesID).val(); }; // get currently selected plot type
-    var getAxisSetup = function(axis) { return getPlotConfig().setup[axis]; };
     var getAllowFacets = function() { return 'allowFacets' in getPlotConfig() ? getPlotConfig().allowFacets : true; }; // bool for whether facets allowed, default true
 
     var getAvailableAxes = function() { 
         var plotType = getPlotType() || Object.keys(config.plotTypes)[0];
-        return Object.keys(config.plotTypes[plotType].setup); 
+        return config.plotTypes[plotType].axes; 
     }; // get axes in config for plot
 
 
@@ -851,20 +861,19 @@ var GUI = (function() {
 
         var availableAxes = getAvailableAxes();
 
-        // clear out form input in case there was a plotType change
-        d3.selectAll('#'+_setupTab+' .form-group').filter(function(d,i) { return i > 0}).remove(); // remove all but first select
+        // delete all but first form input in case there was a plotType change
+        // since each plot type may not have the same axes setup
+        d3.selectAll('#'+_setupTab+' .form-group').filter(function(d,i) { return i > 0}).remove();
 
-        if (availableAxes) {
-            availableAxes.forEach(function(d) {
-                var axisSetup = getAxisSetup(d);
-                if ('type' in axisSetup) {
-                    var cols = getColsByType(axisSetup.type);
-                    var label = "label" in axisSetup ? axisSetup.label : d.toUpperCase()+"-axis";
-                    var domClass = d == 'z' ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4';
-                    generateFormSelect(_setupTab, {values:cols, accessor:d +"-axis", label:label, domClass:domClass, addOption:axisSetup.addOption});
-                }
-            });
-        }
+        availableAxes.forEach(function(axisSetup,i) {
+            if ('type' in axisSetup && 'accessor' in axisSetup) {
+                var cols = getColsByType(axisSetup.type);
+                var label = "label" in axisSetup ? axisSetup.label : axisSetup.accessor.toUpperCase();
+                var domClass = (i > 1 && i % 2) ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4'; // offset so nothing under plot type select
+                var opts = {values:cols, accessor:label, label:label, domClass:domClass};
+                generateFormSelect(_setupTab, opts);
+            }
+        });
     }
 
     /*
@@ -1431,7 +1440,7 @@ var GUI = (function() {
             .attr('required',opts.required)
             .attr('type',opts.type);
    
-        if (typeof opts.set !== 'undefined') input.attr('value',opts.set); 
+        if (typeof opts.setDefault !== 'undefined') input.attr('value',opts.setDefault); 
 
         return input;
     }

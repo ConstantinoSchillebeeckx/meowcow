@@ -1,26 +1,28 @@
 // setup GUI
 var guiSetup = {
-    useToyData: true,
-    missing: "", // characters to treat as missing
+    useToyData: true, // whether to show toy data options in file upload modal
+    missing: "", // data to treat as missing
     plotTypes: {
-        lineChart: {
-            label: 'Line',
-            setup: {
-                x: {
-                    type: 'quantitative',
-                    accessor: 'x', 
+        lineChart: { // plot type, must be available as a model in NVD3
+            allowFacets: true, // whether to display facets tab - OPTIONAL, default true
+            //parseData: function(d) { return d.map(function(e) { return e.Study }); }, // function used to preprocess data before rendering - OPTIONAL, default false TODO
+            label: 'Line', // label to use in select option for this plot type; if not provided, plot type will be used - OPTIONAL
+            axes: [ // bind the proper data attribute to the plot's primary axes
+                {
+                    type: 'quantitative', // ordinal (list of str) or quantitative (numbers) - REQUIRED
+                    accessor: 'x', // accessor for given plot type - REQUIRED
                 },
-                y: {
+                {
                     type: 'quantitative',
                     accessor: 'y', 
                 },
-                z: {
+                {
                     type: 'ordinal',
                     accessor: 'lineGroup', 
-                    label: 'Color group'
+                    label: 'Color group' // option label; if not provided, accessor value will be used - OPTIONAL
                 } 
-            },
-            options: [ // plot options: isArea, defined; data options: area, classed, 
+            ],
+            options: [ // plot options - see NVD3 documentation 
                 {
                     accessor: 'interpolate',
                     label: 'Interpolate',
@@ -53,21 +55,21 @@ var guiSetup = {
         },
         scatterChart: {
             label: 'Scatter',
-            setup: {
-                x: {
+            axes: [
+                {
                     type: 'quantitative',
                     accessor: 'x', 
                 },
-                y: {
+                {
                     type: 'quantitative',
                     accessor: 'y', 
                 },
-                z: {
+                {
                     type: 'ordinal',
                     accessor: 'pointGroup', 
                     label: 'Color group'
                 } 
-            },
+            ],
             options: [
                 {
                     accessor: 'showDistX',
@@ -91,21 +93,21 @@ var guiSetup = {
             allowFacets: true,
             //parseData: function(d) { return d.map(function(e) { return e.Study }); },
             parseData: false,
-            setup: { // this will populate the 'Setup' tab
-                x: {
+            axes: [ // this will populate the 'Setup' tab
+                {
                     type: 'ordinal',
                     accessor: 'x',
                 },
-                y : {
+                {
                     type: 'quantitative',
                     accessor: 'value', 
                 },
-                z : {
+                {
                     label: 'Color group',
                     type: 'ordinal',
                     addOption: {None: false}
                 },
-            },
+            ],
             options: [ // this will populate the 'Options' tab
                 {
                     accessor: 'plotType', // this will also set the select ID
