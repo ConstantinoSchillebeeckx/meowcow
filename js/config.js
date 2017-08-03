@@ -105,6 +105,7 @@ var guiSetup = {
                 {
                     label: 'Color group',
                     type: 'ordinal',
+                    accessor: 'colorGroup',
                     addOption: {None: false}
                 },
             ],
@@ -137,7 +138,7 @@ var guiSetup = {
                         html: true,
                         placement: "auto right"
                     },
-                    set: 'scott'
+                    setDefault: 'scott'
                 }, {
                     accessor: 'resolution',
                     label: 'KDE resolution',
@@ -197,6 +198,16 @@ var guiSetup = {
                     },
                     class: 'col-sm-2',
                 }, {
+                    accessor: 'staggerLabels',
+                    label: 'Stagger labels',
+                    type: 'toggle',
+                    options: {
+                        on: 'Yes',
+                        off: 'No',
+                    },
+                    setDefault: true, // set default to on instead of false
+                    class: 'col-sm-2',
+                }, {
                     accessor: 'showOnlyOutliers',
                     label: 'Show only outliers',
                     type: 'toggle',
@@ -204,7 +215,7 @@ var guiSetup = {
                         on: 'Yes',
                         off: 'No',
                     },
-                    set: true, // set default to on instead of false
+                    setDefault: true, // set default to on instead of false
                     class: 'col-sm-2',
                 }
             ]

@@ -22,7 +22,7 @@ var meowcow = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM into which to render everything
         config = {},        // config details for plots
-        data = false        // data to plot
+        data = false,       // data to plot
         colTypes = {},      // overwrite column types with these
         ignoreCol = false   // columns to ignore in data
 
@@ -85,9 +85,8 @@ var meowcow = (function() {
             .colTypes(colTypes)
             .ignoreCol(ignoreCol)
             .formSubmit(renderPlot)
-            //.init();
+            .init();
 
-        console.log(ignoreCol, data)
   
         return this; 
     }
@@ -226,12 +225,17 @@ var meowcow = (function() {
             // we will need the name of the accessor function to be called on the chart
             // as well as the actual accessor function (which is defined by the GUI)
             var optsSet = {};
-            ['x','y','z'].forEach(function(d) {
-                var accessorName = plotOptions.setup[d].accessor;
-                var accessorAttr = formVals.plotSetup[d+'-axis']; // get the GUI value for the given chart axis option
+            Object.keys(plotOptions.axes).forEach(function(axis) {
+                var d = plotOptions.axes[axis];
+                var accessorName = d.accessor;
+                var accessorAttr = formVals.plotSetup[d.accessor]; // get the GUI value for the given chart axis option
                 if (accessorName) {
                     optsSet[accessorName] = accessorAttr;
-                    chart[accessorName](function(e) { return e[accessorAttr] });
+                    if (accessorAttr) {
+                        chart[accessorName](function(e) { return e[accessorAttr] });
+                    } else {
+                        chart[accessorName](accessorAttr);
+                    }
                 }
             });
 

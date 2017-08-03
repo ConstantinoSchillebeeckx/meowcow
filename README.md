@@ -81,7 +81,7 @@ The following options are available:
 
 ## Config file
 
-This JSON file sets all the proper options for both the GUI and each of the plot types to be rendered.
+This configuration file sets all the proper options for both the GUI and each of the plot types to be rendered; an example file can be found in [js/config.js](js/config.js).
 
 #### Main (outer level)
 
@@ -114,18 +114,23 @@ Each of the items listed in this entry will generate a form input in the options
 - **type** - str, the type of form input to render, must be one of `select`, `text` and `slider` - REQUIRED
 - **accessor** - str, accessor with which to set plot option, must be a NVD3 model option for the given plot type - REQUIRED
 - **label** - str, label to give to form input; if not provided, accessor value will be used - OPTIONAL
-- **help** - obj, if provided, a help icon will be rendered next to the form input which serves as a bootstrap popover for provided the user with details regarding the specific option. It uses the same format as the bootstrap popover options, see https://getbootstrap.com/javascript/#popovers - OPTIONAL
+- **help** - obj, if provided, a help icon will be rendered next to the form input which serves as a bootstrap popover for provided the user with details regarding the specific option. It uses the same format as the bootstrap popover options, see [docs](https://getbootstrap.com/javascript/#popovers) - OPTIONAL
+- **class** str, class to give to input group e.g. col-sm-4
 - **required** - bool, whether to set the form input as required - OPTIONAL, default false
 
 Along with the entries shown above, each input type has specific options.
 
 **select**
-- **values** - array or object, populate the select input with these values; if an object is provided, the keys will set the XXX and the values will set the XXX - REQUIRED
+- **values** - array or object, populate the select input with these values; if an object is provided, the keys will set the select labels and the values will set the select values - REQUIRED
 - **addOption** - array or object, additional option to prepend to select options, formatted similarly to `values` - OPTIONAL
+
+**toggle**
+- **options** - obj, options for toggle, must have same format as the bootstrap toggle options, see [docs](https://github.com/minhur/bootstrap-toggle/#options) - REQUIRED
+- **setDefault** - bool, default value used to pre-populate text input - OPTIONAL, default false
 
 **text**
 - **setDefault** - str, default value used to pre-populate text input - OPTIONAL
 
 **slider**
-- **options** - obj, options for slider, must have same format as the noUIslider options, see XXX - REQUIRED
+- **options** - obj, options for slider, must have same format as the noUIslider options, see [docs](https://refreshless.com/nouislider/slider-options/) - REQUIRED
 - **format** - function, if provided, function is used to format the slider value displayed in the input label - OPTIONAL
