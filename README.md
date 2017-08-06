@@ -11,7 +11,6 @@ Quickly visualize multi-dimensional data through various charting types such as:
 ## TODO
 
 - docs
-- make setup: as a list instead of an object e.g. setup: [{name:'x', type:'quantitative', accessor:'x'},{}]
 - readme
 - handle missing data - added a 'missing' option in config
 - help modal for each plot type showing an example SVG - should make this a config option too
@@ -33,15 +32,20 @@ Data should be provided in a [tidy]() format where each row represents and obser
 
 It should be formatted as a list of objects, for example:
 ```javascript
-[
-    {Subject: 157418, Study: 'I', Weight: 11.7, Date: '2016-07-26', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
-    {Subject: 157418, Study: 'I', Weight: 10.9, Date: '2016-07-27', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
-    {Subject: 157418, Study: 'I', Weight: 12.9, Date: '2016-07-29', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
-    {Subject: 157418, Study: 'I', Weight: 14.4, Date: '2016-08-02', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
-    {Subject: 157418, Study: 'I', Weight: 16.6, Date: '2016-08-09', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
-    {Subject: 157418, Study: 'I', Weight: 17.1, Date: '2016-08-16', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
-    ...
-]
+var inputData = {
+    description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+    meta: null,
+    source: 'source data goes here',
+    data : [
+        {Subject: 157418, Study: 'I', Weight: 11.7, Date: '2016-07-26', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
+        {Subject: 157418, Study: 'I', Weight: 10.9, Date: '2016-07-27', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
+        {Subject: 157418, Study: 'I', Weight: 12.9, Date: '2016-07-29', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
+        {Subject: 157418, Study: 'I', Weight: 14.4, Date: '2016-08-02', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
+        {Subject: 157418, Study: 'I', Weight: 16.6, Date: '2016-08-09', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
+        {Subject: 157418, Study: 'I', Weight: 17.1, Date: '2016-08-16', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
+        ...
+    ]
+}
 ```
 
 Note that data can be input as strings and will be converted to the proper type (`int` of `float`) automatically; furthermore, the data type can be overwritten with the option `.colTypes`. For example, in the dataset shown above, the *Subject* attribute should be treated as an [ordinal]() datatype as opposed to a [quantitative]() one; this can be specified with `.colTypes({Subject: 'str'})`.

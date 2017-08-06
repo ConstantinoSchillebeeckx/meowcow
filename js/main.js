@@ -134,8 +134,8 @@ var meowcow = (function() {
             _facetCols = Object.keys(_facets[_facetRows[0]]);
 
             _facetVals = guiVals.plotFacets;
-            _hVal = _facetVals['col-facet'];
-            _vVal = _facetVals['row-facet'];
+            _hVal = getFacetCol(guiVals)
+            _vVal = getFacetRow(guiVals);
         }
         jQuery('#warning').empty();
 
@@ -261,11 +261,10 @@ var meowcow = (function() {
             console.log(optsSet)
 
             // set title
-            if (title !== null && title) chart.title(title);
+            //if (title !== null && title) chart.title(title); // need to ensure all chart types have the title option
 
             //formatAxisTitle(chart, guiVals);
             //formatTooltip(chart, guiVals);
-            console.log(datReady)
             var datum = d3.select(sel + ' svg')
                             .datum(datReady)
 
@@ -309,7 +308,7 @@ var meowcow = (function() {
      */
     function setupFacetGrid(guiVals, dat) {
 
-        var facetRow, facetCol, colDat, colWrap, plotDom;
+        var colDat, colWrap, plotDom;
         var rowDat = ['row0'];
         var colDat = ['col0'];
         var numRows = rowDat.length;
@@ -320,15 +319,13 @@ var meowcow = (function() {
         var minRowHeight = guiVals.plotFacets.minRowHeight[0];
 
         if (facetVals.facetOn) {  // if plotting with facets
-            var hVal = facetVals['col-facet'].value
-            var vVal = facetVals['row-facet'].value
+            var hVal = getFacetCol(guiVals);
+            var vVal = getFacetRow(guiVals);
             if (vVal) { // if row facet specified
-                facetRow = facetVals['row-facet'].label;
-                rowDat = _unique[facetRow];
+                rowDat = _gui.unique()[vVal];
             }
             if (hVal) { // if col facet specified
-                facetCol = facetVals['col-facet'].label
-                colDat = _unique[facetCol];
+                colDat = _gui.unique()[hVal];
             }
             colWrap = (facetVals.colWrap) ? facetVals.colWrap.value : false;
 
@@ -376,10 +373,10 @@ var meowcow = (function() {
         // first group by row, then by column
         // into form {row_groups: {col_groups: {dat} } }
         // if row & col combination of data is missing, undefined will be the val
-        if (facetRow && facetCol) {
+        if (vVal && hVal) {
             var nested = d3.nest()
-                .key(function(d) { return d[facetRow] })
-                .key(function(d) { return d[facetCol] })
+                .key(function(d) { return d[vVal] })
+                .key(function(d) { return d[hVal] })
                 .map(dat);
 
             // set undefined for missing data
@@ -390,13 +387,13 @@ var meowcow = (function() {
                 }
             }
 
-        } else if (facetRow || facetCol) {
+        } else if (vVal || hVal) {
             var tmp = d3.nest()
-                .key(function(d) { return (facetRow) ? d[facetRow] : d[facetCol] })
+                .key(function(d) { return (vVal) ? d[vVal] : d[hVal] })
                 .map(dat);
 
             var nested = {};
-            if (facetRow) { // if grouping in rows
+            if (vVal) { // if grouping in rows
                 for (var i = 0; i < rowDat.length; i++) {
                     var rowGroup = rowDat[i];
                     var groupDat = tmp[rowGroup];

@@ -5,11 +5,14 @@ var GUI = (function() {
     /*
         TODO
         Tabs:
-        - setup
-        - options
-        - facets
-        - filter
-        - data details
+        - setup: defines which data columns are associated with
+                 which plot dimension.
+        - facets: allows for faceting of data into rows or
+                  columns.
+        - options: sets the plot options.
+        - filter: filter the data to plot only a subset.
+        - data: description of the loaded dataset incluing the
+                available data columns.
     */
 
     //============================================================
@@ -73,7 +76,11 @@ var GUI = (function() {
     }
     this.data = function(d) {
         if (d || d === false) { data = d; return this; }
-        return _dataToRender ? _dataToRender : data;
+        return _dataToRender ? _dataToRender : data.data;
+    }
+    this.unique = function(d) {
+        if (d) { _unique = d; return this; }
+        return _unique;
     }
     this.ignoreCol = function(d) {
         if (d) { ignoreCol = d; return this; }
@@ -94,10 +101,9 @@ var GUI = (function() {
             showModal();
         } else {
             // prep data
-            if (!_unique) { // don't need to prep data if modal was used since it already does it
-                colTypes = findColumnTypes(data, ignoreCol, colTypes);
-                _unique = getAllUnique(data, colTypes);
-            }
+            colTypes = findColumnTypes(ignoreCol, colTypes);
+            _unique = getAllUnique(colTypes);
+            console.log(colTypes)
 
             buildContainers();
             populateGUI();
@@ -109,7 +115,6 @@ var GUI = (function() {
         return JSON.stringify(_guiVals0.plotFacets) !== JSON.stringify(_guiVals.plotFacets);
     }
     this.filterOptionsHaveChanged = function() {
-        console.log(_guiVals0.plotFilter, _guiVals.plotFilter)
         return JSON.stringify(_guiVals0.plotFilter) !== JSON.stringify(_guiVals.plotFilter);
     }
     this.getGUIvals = function() { return _guiVals };
@@ -157,6 +162,7 @@ var GUI = (function() {
             // capture filters that do not have 'all' selected
             if (tab != _filtersTab) { 
 
+                // parse selects
                 selects.forEach(function(d) {
                     var value = (d.value == "" || d.value == "false" || d.value == false) ? null : d.value;
                     _guiVals[tab][d.name] = value;
@@ -250,14 +256,27 @@ var GUI = (function() {
 
 
     /**
-     * Given a variable, return type of datum,
-     * one of either int, float, str, or datetime.
+     * Given a variable of unkown type, 
+     * return type of datum, one of either int, 
+     * float, str, datetime or date.
+     *
+     * @param {str} mixedVar
+     *
+     * @return - will return the variable type as one
+     *   of either int, float, str, datetime or date;
+     *   in the case where the input variable matches
+     *   config.missing, false is returned
      */
     function getDatType(mixedVar) {
+
+        if (config.missing && config.missing == mixedVar) return false; 
+
         if (!isInt(mixedVar) && !isFloat(mixedVar) && isDateTime(mixedVar)) return 'datetime';
         if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDateTime(mixedVar) && isStr(mixedVar)) return 'str';
         if (isInt(mixedVar) && !isFloat(mixedVar) && !isStr(mixedVar)) return 'int';
         if (!isInt(mixedVar) && isFloat(mixedVar) && !isStr(mixedVar)) return 'float';
+        return false;
+        // TODO date type
     }
 
     // return true if val is an interger
@@ -279,20 +298,18 @@ var GUI = (function() {
 
 
     /**
-     * Get all unique values for each of the columns provided by the datatable.
+     * Get all unique values for each of the columns provided by the dataset.
      *
-     * Note that only data for those columns defined in colTypes will be returned
+     * Note that only data for those columns defined in colTypes will be returned>
      *
-     * @param {array} dat - Return of convertToJSON. An array of objects where the object key is the column header
-     *                and the value is the column value.
      * @param {obj} colTypes - SQL column types for each field
      *
      * @ return {obj} Each key is a column and each value is an array of unique values that column has.
      */
-    function getAllUnique(dat, colTypes) {
+    function getAllUnique(colTypes) {
 
         var colNames = Object.keys(colTypes); // list of columns for datatable
-        var vals = {};
+        var vals = {}, dat = data.data;
 
         function sortNumber(a,b) {
             return a - b;
@@ -303,7 +320,7 @@ var GUI = (function() {
             if (colType !== 'excluded') {
                 var unique = [...new Set(dat.map(item => item[colName]))].sort(); // http://stackoverflow.com/a/35092559/1153897
                 if (colType == 'int' || colType == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
-                vals[colName] = unique.map(function(d) { return d });
+                vals[colName] = unique.map(function(d) { return d == config.missing ? null : d });
             }
         })
 
@@ -313,14 +330,17 @@ var GUI = (function() {
 
 
     /**
-     * When a user uploads a file, this function will
+     * When a user loads a dataset, this function will
      * inpsect the parsed data and determine the data
-     * type for each column as 'int','float','str' or
-     * 'datetime'
+     * type for each column as 'int','float','str',
+     * 'datetime' or 'date'
      *
-     * @param {array} data - each array element is an object 
-     *   with column names as keys, and row value as value
-     * @param {array, optional} ignreCol - list of column names to ignore
+     * NOTE: function will also replace missing values with null for
+     *       the var 'data'
+     *
+     * TODO - scanning through entire dataset here as well as with getAllUnique()
+     *
+     * @param {array, optional} ignoreCol - list of column names to ignore
      *   from output object; this is how a user can ignore columns
      *   present in their data.
      * @param colTypes {obj, optional} - same format as the output of this
@@ -331,21 +351,22 @@ var GUI = (function() {
      * @return {obj} - each key is a column name, each value
      *   is the column data type (int,float,str,datetime)
      */
-    function findColumnTypes(data, ignoreCol, colTypes) {
-        var colMap = {};
+    function findColumnTypes(ignoreCol, colTypes) {
+        var colMap = {}, dat = data.data;
 
         // add colTypes keys (column names) to the ignore list
         // we will manually add them in before the return
         if (colTypes && Object.keys(colTypes).length) ignoreCol.concat(Object.keys(colTypes));
 
         // init with first row vals
-        var colNames = Object.keys(data[0]); // column names
-        var colVals = Object.values(data[0]); // row 1 values
+        var colNames = Object.keys(dat[0]); // column names
+        var colVals = Object.values(dat[0]); // row 1 values
         colNames.forEach(function(d,i) {
             if (ignoreCol.indexOf(d) == -1) colMap[d] = getDatType(colVals[i]);
         })
 
-    
+        console.log(colMap)
+
         // check each row for the data type
         // we only update things if the data
         // type 'trumps' the first row
@@ -353,15 +374,22 @@ var GUI = (function() {
         // str meaning a float type will convert trump
         // an int
         var trump = {'int':0, 'float':1, 'datetime': 2, 'str':3}
-        data.forEach(function(d) {
+        dat.forEach(function(d, j) {
             var rowVal = Object.values(d);
 
             colNames.forEach(function(col,i) {
                 if (ignoreCol.indexOf(col) == -1 ) {
                     var currentType = colMap[col];
-                    if (currentType === 'str') return;
                     var valType = getDatType(rowVal[i]);
-                    if (valType !== currentType) { // if type is different than currently stored
+
+                    if (valType === false) {
+                        d[col] = null; // if a missing value, replace with null
+                        return;
+                    }
+
+                    if (currentType === 'str') return; // can't change to anything else, so return
+
+                    if (valType && valType !== currentType) { // if type is different than currently stored
                         if (valType == 'datetime' || valType == 'str') {
                             // if previously a number (int or float) and changing to either datetime or str, make it a str
                             colMap[col] = 'str';
@@ -370,11 +398,16 @@ var GUI = (function() {
                         } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
                             // if previously a datetime, and we get anything else, convert to str
                             colMap[col] = 'str';
+                        } else if (currentType === false) { // in case first row value is missing, this assigns with the next row value type
+                            colMap[col] = valType;
                         }
                     }
                 }
             });
         });
+
+        // update global
+        data.data = dat;
 
         // manually add in user specified column type
         if (colTypes) {
@@ -396,7 +429,7 @@ var GUI = (function() {
      *
      */
     function loadToydata(set) {
-        data = toyData[set].data;
+        data = toyData[set];
         ignoreCol = [];
         colTypes = {};
         init();
@@ -423,7 +456,8 @@ var GUI = (function() {
                 dynamicTyping: true,
                 skipEmptyLines: true,
                 complete: function(results, file) {
-                    data = results.data;
+                    data = {};
+                    data.data = results.data;
                     var meta = results.meta;
                     var errors = results.errors;
 
@@ -432,7 +466,7 @@ var GUI = (function() {
                     modalBody.html('');
                     jQuery('#uploadDone').remove();
 
-                    if (errors.length) { // if there was an error
+                    if (errors.length) { // if there was an error parsing input file
                       
                         jQuery('.modal-content').addClass('panel-danger');
  
@@ -442,38 +476,11 @@ var GUI = (function() {
                         modalBody.append('h4')
                             .attr('class','lead')
                             .html(errorText)
-                    } else {
+                    } else { // parsed input file is ok
 
                         jQuery('.modal-content').removeClass('panel-danger').addClass('panel-info');
-                        colTypes = findColumnTypes(data, ignoreCol);
-                        _unique = getAllUnique(data, colTypes)
-
-                        // show user parsed results
-                        modalBody.append('h4')
-                            .attr('class','lead')
-                            .text('Data loaded successfully!')
-                        modalBody.append('p')
-                            .text('The following columns were found with the given column types:')
-
-                        modalBody.append('ul')
-                            .selectAll('li')
-                            .data(Object.keys(colTypes))
-                            .enter()
-                            .append('li')
-                            .html(function(d, i) { return d + ' - <code>' + Object.values(colTypes)[i] + '</code>'; });
-
-                        modalBody.append('p')
-                            .text('If this is incorrect, please change your data and upload again.');
-
-                        // add 'done' button
-                        d3.select('.modal-footer')
-                            .append('button')
-                            .attr('type','button')
-                            .attr('class','btn btn-success')
-                            .attr('data-dismiss','modal')
-                            .attr('id','uploadDone')
-                            .text('Done')
-                            .on('click', init);
+                        init()
+                        jQuery('#'+_uploadModal).modal('hide');
 
                     }
                 }
@@ -642,7 +649,7 @@ var GUI = (function() {
             // add tab and container
             var note = 'Use the inputs below to filter the plotted data.';
             note += '<br><span class="label label-default">NOTE</span> ';
-            note += 'each additional filter is combined as an <code>and</code> boolean operation.';
+            note += 'each additional filter is combined as an <code>and</code> boolean operation.'; // TODO currently implemented as an OR
             addTab(_filtersTab, 'Filters', note);
 
             // generate an input for each of the columns in the loaded dataset
@@ -888,9 +895,18 @@ var GUI = (function() {
      */
     function makeDataTab() {
 
+        var note = '';
+        var numShow = 20; // if column type is str, show this many number of possible values
+
         // add tab and container
-        var note = 'The currently loaded that has the following attributes:';
-        addTab(_dataTab, 'Data details', note);
+        ['description','source','meta'].forEach(function(d) { 
+            if (data[d]) {
+                note += '<p><u>' + capitalize(d) + '</u>: ' + data[d] + '</p>'; // make a bootstrap label TODO
+            }
+        });
+
+        note += 'The currently loaded data has the following attributes:';
+        addTab(_dataTab, 'Data', note);
 
         var ol = d3.select('#'+_dataTab).append('div')
             .attr('class','col-sm-12')
@@ -902,17 +918,33 @@ var GUI = (function() {
 
             var typeText = 'type: <code>' + attrType + '</code> ';
             var valText = '';
+            var colVals = _unique[attrName];
+            var colDescription;
+            if ('colDescription' in data) {
+                colDescription = data.colDescription[attrName]; 
+            }
 
             if (attrType == 'int' || attrType == 'float') {
-                valText = 'range: [' + d3.extent(_unique[attrName]) + ']';
+                valText = 'range: [' + d3.extent(colVals) + ']';
             } else if (attrType == 'str') {
-                valText = 'values: <mark>' + _unique[attrName].join(',') + '</mark>';
-            } // TODO formatting for datetime and date
+                valText = 'values: <mark>';
+                if (colVals.length > numShow) {
+                    valText += colVals.slice(0, numShow).join(', ') + ' ...</mark>';
+                } else {
+                    valText += colVals.join(', ') + '</mark>';
+                }
+            } else if (attrType == 'datetime' || attrType == 'date') { // TODO formatting for datetime and date
+                valText = '<mark>TODO</mark>';
+            }
 
             var ul = ol.append('li')
-                .html(attrName)
+                .html('<b>' + attrName + '</b>')
                 .append('ul')
 
+            if (colDescription) {
+                ul.append('li')
+                    .html(colDescription);
+            }
             ul.append('li')
                 .html(typeText);
             ul.append('li')
@@ -975,8 +1007,9 @@ var GUI = (function() {
      * @param {str} id - ID to give to tab-content tab, this
      *  will also set the .nav li element with an id of
      *  id + 'Tab'
-     * @param {str} text - label text for tab
-     * @param {str} note - descriptive text explaining tab
+     * @param {str} text - label text for tab, html allowed
+     * @param {str} note - descriptive text explaining tab,
+     *   html allowed
      * @param {bool} active - whether to give the tabpanel 
      *  the 'active' class
      *
@@ -995,7 +1028,7 @@ var GUI = (function() {
             .attr('role','tab')
             .attr('data-toggle','tab')
             .attr('href','#'+id)
-            .text(text)
+            .html(text)
 
         var tab = d3.select('.tab-content').append('div')
             .attr('role','tabpanel')
@@ -1116,13 +1149,13 @@ var GUI = (function() {
 
         // filter data if needed
         if (_guiVals.plotFilter.filterOn && filterOptionsHaveChanged()) {
-            filterData(data, _guiVals.plotFilter, function() {
+            filterData(data.data, _guiVals.plotFilter, function() {
                 formSubmit()
             }); // will update _dataToRender
         } else {
 
             // everything looks good, let's render!
-            _dataToRender = data;
+            _dataToRender = data.data;
             formSubmit();
         }
 
@@ -1150,7 +1183,7 @@ var GUI = (function() {
     function filterData(dat, filters, _callback) {
 
         delete filters.filterOn;
-        
+
         // go through data and apply filters
         _dataToRender = dat.filter(function(datRow) {
             var keep = true; 
@@ -1516,8 +1549,17 @@ var GUI = (function() {
         // need min != max to render a slider
         if (opts.options.range.min == opts.options.range.max) return;
 
+        // ensure range is made up of only numbers
+        // may not be the case if missing values aren't
+        // converted in dataset
+        var minType = getDatType(opts.options.range.min)
+        var maxType = getDatType(opts.options.range.max)
+        if (['float','int'].indexOf(minType) == -1) opts.options.range.min = 0
+        if (['float','int'].indexOf(maxType) == -1) opts.options.range.max = 0
+
         var id = opts.id ? opts.id : opts.accessor
         opts.label = typeof opts.label === 'undefined' ? id : opts.label; // in case label not set in options, use the id
+
         var format = opts.format;
         var formGroup = inputHeader(selector, opts);
         var minValueReplace = opts.minValueReplace;

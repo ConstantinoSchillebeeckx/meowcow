@@ -28,3 +28,21 @@
 [submodule "lib/moment"]
 	path = lib/moment
 	url = https://github.com/moment/moment.git
+[submodule "lib/jquery"]
+	path = lib/jquery
+	url = https://github.com/jquery/jquery.git
+[submodule "lib/fontAwesome"]
+	path = lib/fontAwesome
+	url = https://github.com/FortAwesome/Font-Awesome.git
+[submodule "lib/boostrap"]
+	path = lib/boostrap
+	url = https://github.com/twbs/bootstrap.git
+[submodule "lib/d3"]
+	path = lib/d3
+	url = https://github.com/d3/d3.git
+[submodule "lib/d3-beeswarm"]
+	path = lib/d3-beeswarm
+	url = https://github.com/Kcnarf/d3-beeswarm.git
+[submodule "lib/bootstrap"]
+	path = lib/bootstrap
+	url = https://github.com/twbs/bootstrap.git

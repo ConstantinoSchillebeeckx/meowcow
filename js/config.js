@@ -67,7 +67,8 @@ var guiSetup = {
                 {
                     type: 'ordinal',
                     accessor: 'pointGroup', 
-                    label: 'Color group'
+                    label: 'Color group',
+                    addOption: {None: false},
                 } 
             ],
             options: [
