@@ -114,7 +114,9 @@ var GUI = (function() {
         return JSON.stringify(_guiVals0[_facetsTab]) !== JSON.stringify(_guiVals[_facetsTab]);
     }
     this.filterOptionsHaveChanged = function() {
-        return JSON.stringify(_guiVals0[_filtersTab]) !== JSON.stringify(_guiVals[_filtersTab]);
+        // return true if previou guiVals are not equal to current ones (assuming user is doing some filtering)
+        // or if the reset button is on and no filters are being applied (occurs when user manually resets filters)
+        return JSON.stringify(_guiVals0[_filtersTab]) !== JSON.stringify(_guiVals[_filtersTab]) || (filtersOn() && Object.keys(_guiVals[_filtersTab].length > 0));
     }
     this.getGUIvals = function() { return _guiVals };
 
@@ -214,24 +216,21 @@ var GUI = (function() {
                         var originalVal1 = _unique[col][0];
                         var originalVal2 = _unique[col][_unique[col].length - 1];
         
-                        if (currentVal1 != originalVal1 || currentVal2 != originalVal2) _guiVals[tab][col] = [currentVal1, currentVal2];
+                        if (currentVal1 != originalVal1 || currentVal2 != originalVal2) {
+                            _guiVals[tab][col] = [currentVal1, currentVal2];
+                        } else if (col in _guiVals[tab]) { // remove filter if previously on
+                            delete _guiVals[tab][col];
+                        }
                     } else if (colType == 'float' || colType == 'int') { // if slider
                         var sliderObj = d3.select('#'+col).node().noUiSlider
                         var startVals = sliderObj.options.start;
                         var prevVals = _guiVals0[_filtersTab][col];
                         var currentVals = sliderObj.get().map(function(d) { return convertToNumber(d); })
-                        console.log(startVals, currentVals, prevVals)
 
-                        // we want to store values if different than startVals, or different than previous state
-                        // this allows for re-filtering to all data when manually setting filters to all data
-                        // this isn't very efficient since we go back through the data again
-                        // instead we should just plot the original data stored in data.data TODO
-                        if (typeof prevVals === 'undefined') {
-                            if (startVals[0] != currentVals[0] || startVals[1] != currentVals[1]) {
-                                _guiVals[tab][col] = _sliderValues[tab][col];
-                            }
-                        } else if (prevVals[0] != currentVals[0] || prevVals[1] != currentVals[1]) {
+                        if (startVals[0] != currentVals[0] || startVals[1] != currentVals[1]) {
                             _guiVals[tab][col] = _sliderValues[tab][col];
+                        } else if (col in _guiVals[tab]) { // remove filter if previously on
+                            delete _guiVals[tab][col];
                         }
                     }
                 })
@@ -270,7 +269,7 @@ var GUI = (function() {
         return tmp;
     };
 
-    var dataFilterOn = function() { return jQuery('#'+_filtersResetBtn).attr('style') == "display: none;"; } // can't use .is(":visible") because tab must be active for that to work
+    var filtersOn = function() { return jQuery('#'+_filtersResetBtn).attr('style') !== "display: none;"; } // can't use .is(":visible") because tab must be active for that to work
     var getPlotConfig = function() { return config.plotTypes[getPlotType()]; }; // get config for currently selected plot
     var getPlotOptions = function(plotType) { return getPlotConfig().options; }; // get options for current plot
     var getPlotType = function() { return jQuery('#'+_plotTypesID).val(); }; // get currently selected plot type
@@ -709,9 +708,6 @@ var GUI = (function() {
                         slider.noUiSlider.on('start',function() { 
                             showButton(_filtersResetBtn) // activate reset button
                         })
-                        slider.noUiSlider.on('end',function() { 
-                            _guiVals[_filtersTab].filterOn = true;
-                        })
                     }
 
                 } else if (colType == 'str') { // if categorical, render a select
@@ -729,7 +725,6 @@ var GUI = (function() {
                     select = generateFormSelect(_filtersTab, opts);
                     select.on('change',function() { 
                         showButton(_filtersResetBtn) // activate reset button
-                        _guiVals[_filtersTab].filterOn = true;
                     });
                 } else if (colType == 'datetime' || colType == 'date') {
                     var opts = {values:colVals, accessor:col, label:col, type:colType, range:true, domClass:'col-sm-8'};
@@ -737,7 +732,6 @@ var GUI = (function() {
 
                     jQuery('#'+col).on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
-                        _guiVals[_filtersTab].filterOn = true;
                         var picker1 = this.id;
                         var picker2 = this.id + '2';
                     })
@@ -745,7 +739,6 @@ var GUI = (function() {
                         showButton(_filtersResetBtn) // activate reset button
                         var picker1 = this.id.replace(/2$/,"");
                         var picker2 = this.id;
-                        _guiVals[_filtersTab].filterOn = true;
                     })
                 }
             }
@@ -1157,21 +1150,16 @@ var GUI = (function() {
     function preRender() {
 
         _guiVals0 = JSON.parse(JSON.stringify(_guiVals)) // deep copy
-        console.log(_guiVals0)
 
         // get GUI vals
         getGUIvals(); // this updates _guiVals
-        console.log(_guiVals)
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
         if (!validateGUIsettings(_guiVals)) return;
 
         // filter data if needed
-        console.log(filterOptionsHaveChanged())
-        if (_guiVals[_filtersTab].filterOn || filterOptionsHaveChanged()) {
-            filterData(data.data, _guiVals[_filtersTab], function() {
-                formSubmit()
-            }); // will update _dataToRender
+        if (filterOptionsHaveChanged() && Object.keys(_guiVals[_filtersTab]).length) {
+            filterData(data.data, _guiVals[_filtersTab], function() { formSubmit() }); // will update _dataToRender
         } else {
 
             // everything looks good, let's render!
@@ -1201,8 +1189,6 @@ var GUI = (function() {
      * @return void - sets _dataToRender variable
      */
     function filterData(dat, filters, _callback) {
-
-        //delete filters.filterOn;
 
         // go through data and apply filters
         _dataToRender = dat.filter(function(datRow) {
@@ -1732,9 +1718,6 @@ var GUI = (function() {
             .attr('disabled','disabled')
             .style('display','none');
 
-        
-        _guiVals0[_filtersTab].filterOn = _guiVals[_filtersTab].filterOn;
-        _guiVals[_filtersTab].filterOn = false;
 
         return false;
     }

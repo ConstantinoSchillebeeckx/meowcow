@@ -120,6 +120,8 @@ var meowcow = (function() {
 
         var guiVals = _gui.getGUIvals();
 
+        console.log(_gui.data())
+
 
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
