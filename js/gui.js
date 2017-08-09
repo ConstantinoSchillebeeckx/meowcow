@@ -3,7 +3,7 @@ var GUI = (function() {
     // GUI class
     //------------------------------------------------------------
     /*
-        TODO
+        TODO - docs
         Tabs:
         - setup: defines which data columns are associated with
                  which plot dimension.
@@ -103,7 +103,6 @@ var GUI = (function() {
             // prep data
             colTypes = findColumnTypes(ignoreCol, colTypes);
             _unique = getAllUnique(colTypes);
-            console.log(colTypes)
 
             buildContainers();
             populateGUI();
@@ -112,10 +111,10 @@ var GUI = (function() {
         return this;
     }
     this.facetOptionsHaveChanged = function() {
-        return JSON.stringify(_guiVals0.plotFacets) !== JSON.stringify(_guiVals.plotFacets);
+        return JSON.stringify(_guiVals0[_facetsTab]) !== JSON.stringify(_guiVals[_facetsTab]);
     }
     this.filterOptionsHaveChanged = function() {
-        return JSON.stringify(_guiVals0.plotFilter) !== JSON.stringify(_guiVals.plotFilter);
+        return JSON.stringify(_guiVals0[_filtersTab]) !== JSON.stringify(_guiVals[_filtersTab]);
     }
     this.getGUIvals = function() { return _guiVals };
 
@@ -153,16 +152,15 @@ var GUI = (function() {
             // parse select inputs
             var selects = jQuery(this).find(':input').serializeArray();
 
-
             var checkBoxes = jQuery(this).find('input[type="checkbox"]');
 
-            // gui vals for filtersTab are set differetly.
+            // gui vals for filtersTab are set differently.
             // since by default everything is selected we are only
-            // interestd in changes from this state; that is, 
-            // capture filters that do not have 'all' selected
+            // interestd in changes from this state or from the
+            // previous one
             if (tab != _filtersTab) { 
 
-                // parse selects
+                // parse selects and text input
                 selects.forEach(function(d) {
                     var value = (d.value == "" || d.value == "false" || d.value == false) ? null : d.value;
                     _guiVals[tab][d.name] = value;
@@ -187,7 +185,7 @@ var GUI = (function() {
                     _guiVals[_facetsTab].facetOn = (_guiVals[_facetsTab]['col-facet'] != null || _guiVals[_facetsTab]['row-facet'] != null)
                 }
 
-            } else {
+            } else { // if filters tab
 
                 // group selects together so multiple select
                 // gets stored as an array
@@ -206,8 +204,37 @@ var GUI = (function() {
                     }
                 });
 
-                // TODO store values for slider 
 
+                Object.keys(colTypes).forEach(function(col) {
+                    var colType = colTypes[col];
+                    
+                    if (colType == 'date' || colType == 'datetime') { // if date filter, there will be two date inputs
+                        var currentVal1 = jQuery('#'+col+' input').val();
+                        var currentVal2 = jQuery('#'+col+'2 input').val();
+                        var originalVal1 = _unique[col][0];
+                        var originalVal2 = _unique[col][_unique[col].length - 1];
+        
+                        if (currentVal1 != originalVal1 || currentVal2 != originalVal2) _guiVals[tab][col] = [currentVal1, currentVal2];
+                    } else if (colType == 'float' || colType == 'int') { // if slider
+                        var sliderObj = d3.select('#'+col).node().noUiSlider
+                        var startVals = sliderObj.options.start;
+                        var prevVals = _guiVals0[_filtersTab][col];
+                        var currentVals = sliderObj.get().map(function(d) { return convertToNumber(d); })
+                        console.log(startVals, currentVals, prevVals)
+
+                        // we want to store values if different than startVals, or different than previous state
+                        // this allows for re-filtering to all data when manually setting filters to all data
+                        // this isn't very efficient since we go back through the data again
+                        // instead we should just plot the original data stored in data.data TODO
+                        if (typeof prevVals === 'undefined') {
+                            if (startVals[0] != currentVals[0] || startVals[1] != currentVals[1]) {
+                                _guiVals[tab][col] = _sliderValues[tab][col];
+                            }
+                        } else if (prevVals[0] != currentVals[0] || prevVals[1] != currentVals[1]) {
+                            _guiVals[tab][col] = _sliderValues[tab][col];
+                        }
+                    }
+                })
             }
         })
 
@@ -271,12 +298,12 @@ var GUI = (function() {
 
         if (config.missing && config.missing == mixedVar) return false; 
 
-        if (!isInt(mixedVar) && !isFloat(mixedVar) && isDateTime(mixedVar)) return 'datetime';
-        if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDateTime(mixedVar) && isStr(mixedVar)) return 'str';
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && isDate(mixedVar, 'YYYY-MM-DD HH:mm:ss')) return 'datetime';
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && isDate(mixedVar, 'YYYY-MM-DD')) return 'date';
+        if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDate(mixedVar) && isStr(mixedVar)) return 'str';
         if (isInt(mixedVar) && !isFloat(mixedVar) && !isStr(mixedVar)) return 'int';
         if (!isInt(mixedVar) && isFloat(mixedVar) && !isStr(mixedVar)) return 'float';
         return false;
-        // TODO date type
     }
 
     // return true if val is an interger
@@ -291,9 +318,12 @@ var GUI = (function() {
     function isStr(val) {
         return isNaN(val)
     }
-    // return true if val is a datetime str
-    function isDateTime(val) {
-        return !isNaN(Date.parse(val))
+    // return true if val matches date format
+    // 'YYYY-mm-dd hh:mm:ss'
+    function isDate(val, format) {
+        if (typeof format === 'undefined') format = 'YYYY-MM-DD HH:mm:ss' // default to sql timestamp
+        return moment(val, format).format(format) === val;
+        //return !isNaN(Date.parse(val))
     }
 
 
@@ -349,7 +379,7 @@ var GUI = (function() {
      *   wants to treat this as a str.
      *
      * @return {obj} - each key is a column name, each value
-     *   is the column data type (int,float,str,datetime)
+     *   is the column data type (int,float,str,datetime,date)
      */
     function findColumnTypes(ignoreCol, colTypes) {
         var colMap = {}, dat = data.data;
@@ -365,7 +395,6 @@ var GUI = (function() {
             if (ignoreCol.indexOf(d) == -1) colMap[d] = getDatType(colVals[i]);
         })
 
-        console.log(colMap)
 
         // check each row for the data type
         // we only update things if the data
@@ -373,7 +402,7 @@ var GUI = (function() {
         // 'trump' order is int, float, datetime,
         // str meaning a float type will convert trump
         // an int
-        var trump = {'int':0, 'float':1, 'datetime': 2, 'str':3}
+        var trump = {'int':0, 'float':1, 'datetime': 2, 'date': 2, 'str':3}
         dat.forEach(function(d, j) {
             var rowVal = Object.values(d);
 
@@ -390,12 +419,12 @@ var GUI = (function() {
                     if (currentType === 'str') return; // can't change to anything else, so return
 
                     if (valType && valType !== currentType) { // if type is different than currently stored
-                        if (valType == 'datetime' || valType == 'str') {
+                        if (valType == 'datetime' || valType == 'str' || valType == 'date') {
                             // if previously a number (int or float) and changing to either datetime or str, make it a str
                             colMap[col] = 'str';
                         } else if (trump[valType] > trump[currentType]) { 
                             colMap[col] = valType;
-                        } else if (trump[valType] < trump[currentType] && currentType == 'datetime') { 
+                        } else if (trump[valType] < trump[currentType] && (currentType == 'datetime' || currentType == 'date')) { 
                             // if previously a datetime, and we get anything else, convert to str
                             colMap[col] = 'str';
                         } else if (currentType === false) { // in case first row value is missing, this assigns with the next row value type
@@ -649,7 +678,7 @@ var GUI = (function() {
             // add tab and container
             var note = 'Use the inputs below to filter the plotted data.';
             note += '<br><span class="label label-default">NOTE</span> ';
-            note += 'each additional filter is combined as an <code>and</code> boolean operation.'; // TODO currently implemented as an OR
+            note += 'each additional filter is combined as an <code>and</code> boolean operation.'; 
             addTab(_filtersTab, 'Filters', note);
 
             // generate an input for each of the columns in the loaded dataset
@@ -682,8 +711,6 @@ var GUI = (function() {
                         })
                         slider.noUiSlider.on('end',function() { 
                             _guiVals[_filtersTab].filterOn = true;
-                            //_guiVals0[_filtersTab][this.target.id] = _guiVals[_filtersTab][this.target.id];
-                            //_guiVals[_filtersTab][this.target.id] = this.get(); // store selected vals
                         })
                     }
 
@@ -703,10 +730,8 @@ var GUI = (function() {
                     select.on('change',function() { 
                         showButton(_filtersResetBtn) // activate reset button
                         _guiVals[_filtersTab].filterOn = true;
-                        //_guiVals0[_filtersTab][this.id] = _guiVals[_filtersTab][this.id];
-                        //_guiVals[_filtersTab][this.id] = jQuery(this).val(); // store selected vals
                     });
-                } else if (colType == 'datetime') {
+                } else if (colType == 'datetime' || colType == 'date') {
                     var opts = {values:colVals, accessor:col, label:col, type:colType, range:true, domClass:'col-sm-8'};
                     generateDateTimeInput(_filtersTab, opts);
 
@@ -715,22 +740,12 @@ var GUI = (function() {
                         _guiVals[_filtersTab].filterOn = true;
                         var picker1 = this.id;
                         var picker2 = this.id + '2';
-                     /*   _guiVals0[_filtersTab][picker1] = _guiVals[_filtersTab][picker1]
-                        _guiVals[_filtersTab][picker1] = [
-                            jQuery('#'+picker1).data('DateTimePicker').date(),
-                            jQuery('#'+picker2).data("DateTimePicker").date()
-                        ] */
                     })
                     if (opts.range) jQuery('#'+col+'2').on('dp.change', function() { 
                         showButton(_filtersResetBtn) // activate reset button
                         var picker1 = this.id.replace(/2$/,"");
                         var picker2 = this.id;
                         _guiVals[_filtersTab].filterOn = true;
-                      /*  _guiVals0[_filtersTab][picker1] = _guiVals[_filtersTab][picker1]
-                        _guiVals[_filtersTab][picker1] = [
-                            jQuery('#'+picker1).data('DateTimePicker').date(),
-                            jQuery('#'+picker2).data("DateTimePicker").date()
-                        ] */
                     })
                 }
             }
@@ -901,7 +916,9 @@ var GUI = (function() {
         // add tab and container
         ['description','source','meta'].forEach(function(d) { 
             if (data[d]) {
-                note += '<p><u>' + capitalize(d) + '</u>: ' + data[d] + '</p>'; // make a bootstrap label TODO
+                note += '<dl class="dl-horizontal">';
+                note += '<dt><span class="label label-primary">' + capitalize(d) + '</span></dt>';
+                note += ' <dd>' + data[d] + '</dd></dl>';
             }
         });
 
@@ -933,8 +950,8 @@ var GUI = (function() {
                 } else {
                     valText += colVals.join(', ') + '</mark>';
                 }
-            } else if (attrType == 'datetime' || attrType == 'date') { // TODO formatting for datetime and date
-                valText = '<mark>TODO</mark>';
+            } else if (attrType == 'datetime' || attrType == 'date') { 
+                valText = '<kbd>' + _unique[attrName][_unique[attrName].length - 1] + '</kbd> to <kbd>' + _unique[attrName][0] + '</kbd>';
             }
 
             var ul = ol.append('li')
@@ -1140,16 +1157,19 @@ var GUI = (function() {
     function preRender() {
 
         _guiVals0 = JSON.parse(JSON.stringify(_guiVals)) // deep copy
+        console.log(_guiVals0)
 
         // get GUI vals
         getGUIvals(); // this updates _guiVals
+        console.log(_guiVals)
 
         // before rendering anything, let's ensure the selected GUI options make sense to render
-        if (!validateGUIsettings(_guiVals)) console.log('skip errors'); // return;
+        if (!validateGUIsettings(_guiVals)) return;
 
         // filter data if needed
-        if (_guiVals.plotFilter.filterOn && filterOptionsHaveChanged()) {
-            filterData(data.data, _guiVals.plotFilter, function() {
+        console.log(filterOptionsHaveChanged())
+        if (_guiVals[_filtersTab].filterOn || filterOptionsHaveChanged()) {
+            filterData(data.data, _guiVals[_filtersTab], function() {
                 formSubmit()
             }); // will update _dataToRender
         } else {
@@ -1182,13 +1202,15 @@ var GUI = (function() {
      */
     function filterData(dat, filters, _callback) {
 
-        delete filters.filterOn;
+        //delete filters.filterOn;
 
         // go through data and apply filters
         _dataToRender = dat.filter(function(datRow) {
             var keep = true; 
-            Object.keys(filters).forEach(function(filter) {
-                var filterType = colTypes[filter]; // str, datetime, or float
+            var filterCols = Object.keys(filters);
+            for (var i = 0; i < filterCols.length; i++) {
+                var filter = filterCols[i];
+                var filterType = colTypes[filter]; // str, datetime, date or float
                 var filterVals = filters[filter];
                 var rowVal = datRow[filter];
                 if (filterType == 'str') {
@@ -1199,7 +1221,9 @@ var GUI = (function() {
                     rowVal = moment(rowVal);
                     if (rowVal.isBefore(filterVals[0]) || rowVal.isAfter(filterVals[1])) keep = false;
                 }
-            });
+    
+                if (keep === false) return keep; // this makes filter an AND on all columns
+            };
             return keep;
         })
 
@@ -1229,7 +1253,11 @@ var GUI = (function() {
         }
 */
 
-        // check that selected plot type is an option in nv.models (should be a key) TODO
+        // check that selected plot type is an option in nv.models (should be a key)
+        if (!(setupVals.plotTypes in nv.models)) {
+            displayWarning("The plot type <code>" + setupVals.plotTypes + "</code> is not a valid NVD3 model, please check the documentation.", _warningsID, true);
+            return false;
+        }
 
         // TODO further checks
 
@@ -1270,7 +1298,7 @@ var GUI = (function() {
      * @key {string} label - label text
      * @key {bool} range - whether datepicker should be formatted as range - this will generate
      *   two datetime pickers
-     * @key {str} type - type of picker, 'datetime' or 'XXX' TODO
+     * @key {str} type - type of picker, 'datetime' or 'date'
      */
     function generateDateTimeInput(selector, opts) {
         if (typeof opts.addOption === 'undefined') opts.addOption = false;
@@ -1281,7 +1309,7 @@ var GUI = (function() {
         // default picker options
         var pickerOptions = 'options' in opts ? opts.options : {};
         pickerOptions.showTodayButton = true;
-        pickerOptions.format = opts.type == 'datetime' ? "YYYY-MM-DD h:mm:ss a" : "YYYY-MM-DD";
+        pickerOptions.format = opts.type == 'datetime' ? "YYYY-MM-DD HH:mm:ss" : "YYYY-MM-DD";
 
         var formGroup = inputHeader(selector, opts);
 
@@ -1313,11 +1341,9 @@ var GUI = (function() {
             });
             jQuery(picker1).on("dp.change", function (e) {
                 jQuery(picker2).data("DateTimePicker").minDate(e.date);
-                // TODO if current picker2 date is less than picker1, change picker2 date to picker1
             });
             jQuery(picker2).on("dp.change", function (e) {
                 jQuery(picker1).data("DateTimePicker").maxDate(e.date);
-                // TODO if current picker1 date is greater than picker2, change picker1 date to picker2
             });
 
             // set placeholders
@@ -1589,7 +1615,6 @@ var GUI = (function() {
         }
 
         // initialize slider value store
-        // TODO all this min/max value replaceing is junky
         // need to refactor the code
         if (initValue.length == 2) {
             if (typeof minValueReplace !== 'undefined' && initValue[0] == opts.options.range.min) initValue[0] = minValueReplace;
@@ -1685,10 +1710,11 @@ var GUI = (function() {
         for (var col in colTypes) {
             var colType = colTypes[col];
             if (colType == 'int' || colType == 'float') {
-                var slider = d3.select('#'+tabID).select('.noUi-target').node() // TODO will only select a single slider, need to select all, and reset all
+                var slider = d3.select('#'+tabID).select('.noUi-target').node()
                 if (slider) slider.noUiSlider.reset();
-            } else if (colType == 'datetime') {
-                jQuery('#'+col).data("DateTimePicker").date(moment(_unique[col][0])); // TODO - reset all present pickers; set to initialized date (should probably store this somewhere)
+            } else if (colType == 'datetime' || colType == 'date') {
+                jQuery('#'+col).data("DateTimePicker").date(moment(_unique[col][0]));
+                jQuery('#'+col+'2').data("DateTimePicker").date(moment(_unique[col][_unique[col].length - 1]));
             }
         }
 

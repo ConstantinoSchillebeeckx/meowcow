@@ -15,6 +15,7 @@ Quickly visualize multi-dimensional data through various charting types such as:
 - handle missing data - added a 'missing' option in config
 - help modal for each plot type showing an example SVG - should make this a config option too
 - plot options for line plot: isArea, defined; data options: area, classed, 
+- save svg button
 
 overal chart options:
 - log scale axes
@@ -36,6 +37,11 @@ var inputData = {
     description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
     meta: null,
     source: 'source data goes here',
+    colDescription: {
+        Subject:'identifier for study subject',
+        Study:'study name',
+        ...
+    },
     data : [
         {Subject: 157418, Study: 'I', Weight: 11.7, Date: '2016-07-26', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},
         {Subject: 157418, Study: 'I', Weight: 10.9, Date: '2016-07-27', Protocol: 'control', Drug: 'zeta', Isolator: 'A'},

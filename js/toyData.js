@@ -1,8 +1,8 @@
 var toyData = {
     Iris: {
-        description: 'Iris data set',
-        meta: 'https://raw.github.com/vincentarelbundock/Rdatasets/master/doc/datasets/iris.html',
-        source: 'https://raw.github.com/vincentarelbundock/Rdatasets/master/csv/datasets/iris.csv',
+        description: "This famous (Fisher's or Anderson's) iris data set gives the measurements in centimeters of the variables sepal length and width and petal length and width, respectively, for 50 flowers from each of 3 species of iris.  The species are <em>Iris setosa</em>, <em>versicolor</em>, and <em>virginica</em>.",
+        meta: '<a href="https://raw.github.com/vincentarelbundock/Rdatasets/master/doc/datasets/iris.html">Link</a>',
+        source: "Fisher, R. A. (1936)<br>The use of multiple measurements in taxonomic problems.<br><em>Annals of Eugenics</em>,<br><b>7</b>, Part II, 179&ndash;188.",
         data : [
             {"sepalLength": 5.1, "sepalWidth": 3.5, "petalLength": 1.4, "petalWidth": 0.2, "species": "setosa"},
             {"sepalLength": 4.9, "sepalWidth": 3.0, "petalLength": 1.4, "petalWidth": 0.2, "species": "setosa"},
@@ -157,8 +157,9 @@ var toyData = {
         ]
     },
     "Prussian horse kick": {
-        description: 'https://raw.github.com/vincentarelbundock/Rdatasets/master/doc/pscl/prussian.html',
-        source: 'https://raw.github.com/vincentarelbundock/Rdatasets/master/csv/pscl/prussian.csv',
+        description: "Russian economist Ladislaus Bortkiewicz researched the annual deaths by horse kicks in the Prussian Army from 1875-1984. Data was recorded from 14 different army corps, with one being the Guard Corps. ",
+        source: "von Bortkiewicz, L. 1898. <em>Das Gesetz der Kleinen Zahlen.</em> Leipzig: Teubner.",
+        meta: "<a href='https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/doc/pscl/prussian.html'>Link</a>",
         data: [
             {y:0, year:75, corp:'G'},
             {y:2, year:76, corp:'G'},
@@ -443,8 +444,9 @@ var toyData = {
         ]
     },
     'Titanic': {
-        description: 'https://raw.github.com/vincentarelbundock/Rdatasets/master/doc/vcd/Lifeboats.html',
-        source: 'https://raw.github.com/vincentarelbundock/Rdatasets/master/csv/vcd/Lifeboats.csv',
+        description: "This data set provides information on the fate of passengers on the fatal maiden voyage of the ocean liner &lsquo;Titanic&rsquo;, summarized according to economic status (class), sex, age and survival.",
+        source: 'Dawson, Robert J. MacG. (1995),<br>The &lsquo;Unusual Episode&rsquo; Data Revisited.<br><em>Journal of Statistics Education</em>, <b>3</b>.<br><a href="https://www.amstat.org/publications/jse/v3n3/datasets.dawson.html">https://www.amstat.org/publications/jse/v3n3/datasets.dawson.html</a>',
+        meta: '<a href="https://raw.githubusercontent.com/vincentarelbundock/Rdatasets/master/doc/datasets/Titanic.html">Link</a>',
         data: [
             {Name: 'Allen, Miss Elisabeth Walton', Pclass: '1st', Age: 29, Sex: 'female', Survived: 1, SexCode: 1},
             {Name: 'Allison, Miss Helen Loraine', Pclass: '1st', Age: 2, Sex: 'female', Survived: 0, SexCode: 1},
@@ -1762,8 +1764,9 @@ var toyData = {
         ]
     },
     Automobiles: {
-        description: 'https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.names',
-        source: 'https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data',
+        description: "This data set consists of three types of entities: (a) the specification of an auto in terms of various characteristics, (b) its assigned insurance risk rating, (c) its normalized losses in use as compared to other cars.  The second rating corresponds to the degree to which the auto is more risky than its price indicates. Cars are initially assigned a risk factor symbol associated with its price.   Then, if it is more risky (or less), this symbol is adjusted by moving it up (or down) the scale.  Actuarians call this process <code>symboling</code>.  A value of +3 indicates that the auto is risky, -3 that it is probably pretty safe.<br><br>The third factor is the relative average loss payment per insured vehicle year.  This value is normalized for all autos within a particular size classification (two-door small, station wagons, sports/speciality, etc...), and represents the average loss per car per year.",
+        source: "<ol><li>1985 Model Import Car and Truck Specifications, 1985 Ward's Automotive Yearbook.</li><li>Personal Auto Manuals, Insurance Services Office, 160 Water Street, New York, NY 10038</li><li>Insurance Collision Report, Insurance Institute for Highway Safety, Watergate 600, Washington, DC 20037</li></ol>",
+        meta: "<a href='https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data'>Raw data</a>",
         data: [
             {"symboling":3,"normalized-losses":"","make":"alfa-romero","fuel-type":"gas","aspiration":"std","num-of-doors":"two","body-style":"convertible","drive-wheels":"rwd","engine-location":"front","wheel-base":88.6,"length":168.8,"width":64.1,"height":48.8,"curb-weight":2548,"engine-type":"dohc","num-of-cylinders":"four","engine-size":130,"fuel-system":"mpfi","bore":3.47,"stroke":2.68,"compression-ratio":9,"horsepower":111,"peak-rpm":5000,"city-mpg":21,"highway-mpg":27,"price":13495},
             {"symboling":3,"normalized-losses":"","make":"alfa-romero","fuel-type":"gas","aspiration":"std","num-of-doors":"two","body-style":"convertible","drive-wheels":"rwd","engine-location":"front","wheel-base":88.6,"length":168.8,"width":64.1,"height":48.8,"curb-weight":2548,"engine-type":"dohc","num-of-cylinders":"four","engine-size":130,"fuel-system":"mpfi","bore":3.47,"stroke":2.68,"compression-ratio":9,"horsepower":111,"peak-rpm":5000,"city-mpg":21,"highway-mpg":27,"price":16500},
