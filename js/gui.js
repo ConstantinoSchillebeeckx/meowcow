@@ -111,7 +111,14 @@ var GUI = (function() {
         return this;
     }
     this.facetOptionsHaveChanged = function() {
-        return JSON.stringify(_guiVals0[_facetsTab]) !== JSON.stringify(_guiVals[_facetsTab]);
+        var haveChanged = false;
+        Object.keys(_guiVals[_facetsTab]).forEach(function(d) {
+            if (d != _minRowHeight) { // don't check for change of row height
+                if (_guiVals[_facetsTab][d] !== _guiVals0[_facetsTab][d] && !haveChanged) haveChanged = true;
+            }
+        })
+        return haveChanged;
+        //return JSON.stringify(_guiVals0[_facetsTab]) !== JSON.stringify(_guiVals[_facetsTab]);
     }
     this.filterOptionsHaveChanged = function() {
         // return true if previou guiVals are not equal to current ones (assuming user is doing some filtering)
@@ -836,7 +843,7 @@ var GUI = (function() {
             input.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
 
             var opts = {
-                options: {start: 100, range: {'min':100, 'max':300}, step:1, connect: [true, false]},
+                options: {start: 100, range: {'min':100, 'max':500}, step:1, connect: [true, false]},
                 format: function(d) { return '[' + parseInt(d) + 'px]' },
                 id:_minRowHeight, label:'Min row height', minValueReplace: 'Auto', showValueReplace: true,
                 domClass: 'col-sm-3',
@@ -844,7 +851,7 @@ var GUI = (function() {
             var slider = generateFormSlider(_facetsTab, opts);
             slider.noUiSlider.on('start',function() { showButton(_facetResetBtn) }); // activate reset button
 
-            // filter reset button
+            // reset button
             // initially hide it
             d3.select('#'+_facetsTab)
                 .append('div')
@@ -856,7 +863,7 @@ var GUI = (function() {
                 .attr('disabled','disabled')
                 .style('display','none')
                 .on('click', function() { resetInputs(_facetsTab, _facetResetBtn)} )
-                .text('Reset filters');
+                .text('Reset facets');
         } else {
             d3.select(_facetsTab).style('display','hidden');
         }

@@ -1,11 +1,3 @@
-/*
-TODO
-- gui rules set by config file (e.g. some charts could allow x-axis to be the same as the y-axis)
-- data filtering
-- min row height (should also set chart height)
-- x-axis changes aren't working
-*/
-
 var meowcow = (function() {
 
     
@@ -41,7 +33,8 @@ var meowcow = (function() {
         _facetCols,
         _facetVals,
         _hVal,
-        _vVal
+        _vVal,
+        _aspectRatio = 2.0; // width to height ratio of facets
     
 
 
@@ -99,8 +92,9 @@ var meowcow = (function() {
 
     var getFacetRow = function(d) { return d.plotFacets['row-facet']; }
     var getFacetCol = function(d) { return d.plotFacets['col-facet']; }
-    var getFacetWrap = function(d) { return d.plotFacets.colWrap; }
-    var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight]; }
+    var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight] == 'Auto' ? false : d.plotFacets[_minRowHeight][0]; }
+    var getFacetAutoHeight = function() { return jQuery('#facet_0').width() / _aspectRatio };
+    var getFacetCurrentHeight = function() { return jQuery('#facet_0').height(); };
 
 
      /**
@@ -120,9 +114,6 @@ var meowcow = (function() {
 
         var guiVals = _gui.getGUIvals();
 
-        console.log(_gui.data())
-
-
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
         // of if the filtering is changed
@@ -131,6 +122,7 @@ var meowcow = (function() {
             if (_gui.facetOptionsHaveChanged()) jQuery(canvas).empty();  // clear out facets if facet options changed
             _facets = setupFacetGrid(guiVals, _gui.data());
 
+
             // generate facets and group data
             _facetRows = Object.keys(_facets);
             _facetCols = Object.keys(_facets[_facetRows[0]]);
@@ -138,9 +130,9 @@ var meowcow = (function() {
             _facetVals = guiVals.plotFacets;
             _hVal = getFacetCol(guiVals)
             _vVal = getFacetRow(guiVals);
+
         }
         jQuery('#warning').empty();
-
 
 
         // draw plot in each facet
@@ -270,13 +262,23 @@ var meowcow = (function() {
             var datum = d3.select(sel + ' svg')
                             .datum(datReady)
 
+            // adjust height of all rows if min row height has changed
+            var rowHeight = getFacetMinHeight(formVals); // will be false if slider set to 'Auto'
+            if (rowHeight != getFacetCurrentHeight() && rowHeight) {
+                jQuery('.facet').animate({'height': rowHeight}, 150);
+                chart.height(rowHeight);
+            } else if (!rowHeight && getFacetAutoHeight() != getFacetCurrentHeight()) { // update height to auto
+                jQuery('.facet').animate({'height': getFacetAutoHeight()}, 150);
+                chart.height(getFacetAutoHeight());
+            }
+
             if (chartUpdate) {
                 chart.update();
             } else {
                 datum.call(chart);
             }
 
-            nv.utils.windowResize(chart.update);
+            nv.utils.windowResize(function() { chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
             return chart;
@@ -315,19 +317,18 @@ var meowcow = (function() {
         var colDat = ['col0'];
         var numRows = rowDat.length;
         var numCols = colDat.length;
-        var aspectRatio = 2.0; // width to height ratio
         var plotDom = d3.select('#' + _canvasWrap);
         var facetVals = guiVals.plotFacets;
-        var minRowHeight = guiVals.plotFacets.minRowHeight[0];
+        var minRowHeight = getFacetMinHeight(guiVals);
 
         if (facetVals.facetOn) {  // if plotting with facets
             var hVal = getFacetCol(guiVals);
             var vVal = getFacetRow(guiVals);
             if (vVal) { // if row facet specified
-                rowDat = _gui.unique()[vVal];
+                rowDat = vVal in guiVals.plotFilter ? guiVals.plotFilter[vVal] : _gui.unique()[vVal];
             }
             if (hVal) { // if col facet specified
-                colDat = _gui.unique()[hVal];
+                colDat = hVal in guiVals.plotFilter ? guiVals.plotFilter[hVal] : _gui.unique()[hVal];
             }
             colWrap = (facetVals.colWrap) ? facetVals.colWrap.value : false;
 
@@ -335,10 +336,9 @@ var meowcow = (function() {
             numCols = (colWrap) ? colWrap : colDat.length;
         }
 
-
         // calculate width/height of each facet 
         var colWidth = jQuery('#guiPanel').width() / numCols;
-        var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / aspectRatio;
+        var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / _aspectRatio;
 
         // generate DOM elements
         var facetCount = 0;
