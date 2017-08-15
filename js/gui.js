@@ -1734,22 +1734,6 @@ var GUI = (function() {
      */
     function showButton(id) { jQuery('#'+id).attr('disabled',false).show(); }
 
-    /**
-    * Convert string to either an int, float
-    * or leave as string
-    *
-    * @param {string} str - input string to convert
-    *
-    * @return - either a float, int or string
-    */
-
-    function convertToNumber(str) {
-
-        var convert = str * 1;
-
-        return (isNaN(convert)) ? str : convert;
-
-    }
 
 
     //============================================================

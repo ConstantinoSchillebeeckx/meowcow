@@ -34,6 +34,7 @@ var meowcow = (function() {
         _facetVals,
         _hVal,
         _vVal,
+        _warningsID = 'warnings',
         _aspectRatio = 2.0; // width to height ratio of facets
     
 
@@ -118,7 +119,7 @@ var meowcow = (function() {
         // plots are only cleared if the GUI options for facets are changed
         // of if the filtering is changed
         if (_gui.facetOptionsHaveChanged() || _gui.filterOptionsHaveChanged()) { 
-           
+
             if (_gui.facetOptionsHaveChanged()) jQuery(canvas).empty();  // clear out facets if facet options changed
             _facets = setupFacetGrid(guiVals, _gui.data());
 
@@ -132,7 +133,7 @@ var meowcow = (function() {
             _vVal = getFacetRow(guiVals);
 
         }
-        jQuery('#warning').empty();
+        jQuery('#' + _warningsID).empty();
 
 
         // draw plot in each facet
@@ -199,7 +200,6 @@ var meowcow = (function() {
             datReady = parseFunc(dat);
         }
 
-
         // create the chart
         var chart;
         var chartUpdate = false; // whether the chart should be updated
@@ -207,7 +207,7 @@ var meowcow = (function() {
             console.log('Rendering ' + plotType);
 
             // load previous chart if it exists
-            if (typeof _chartArray[chartCount] !== 'undefined') {
+            if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged()) {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
                 console.log('loading previous chart')
@@ -261,6 +261,7 @@ var meowcow = (function() {
             //formatTooltip(chart, guiVals);
             var datum = d3.select(sel + ' svg')
                             .datum(datReady)
+            console.log(datReady)
 
             // adjust height of all rows if min row height has changed
             var rowHeight = getFacetMinHeight(formVals); // will be false if slider set to 'Auto'
@@ -330,7 +331,7 @@ var meowcow = (function() {
             if (hVal) { // if col facet specified
                 colDat = hVal in guiVals.plotFilter ? guiVals.plotFilter[hVal] : _gui.unique()[hVal];
             }
-            colWrap = (facetVals.colWrap) ? facetVals.colWrap.value : false;
+            colWrap = (facetVals.colWrap) ? convertToNumber(facetVals.colWrap) : false;
 
             numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
             numCols = (colWrap) ? colWrap : colDat.length;
@@ -454,8 +455,8 @@ function displayWarning(message, selector=false, error=false) {
 
     // generate wrapper if it doesn't exist
     if (!selector) {
-        d3.select("body").append("div").attr("id","warning")
-        selector = "#warning";
+        d3.select("body").append("div").attr("id",_warningsID)
+        selector = "#" + _warningsID;
     }
 
 
@@ -470,3 +471,20 @@ function displayWarning(message, selector=false, error=false) {
     d3.select('#'+selector).html(tmp);
 }
 
+
+/**
+* Convert string to either an int, float
+* or leave as string
+*
+* @param {string} str - input string to convert
+*
+* @return - either a float, int or string
+*/
+
+function convertToNumber(str) {
+
+    var convert = str * 1;
+
+    return (isNaN(convert)) ? str : convert;
+
+}
