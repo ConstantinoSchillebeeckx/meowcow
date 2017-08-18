@@ -34,7 +34,10 @@ var meowcow = (function() {
         _facetVals,
         _hVal,
         _vVal,
+        _numRows,   // number of facet rows
+        _numCols,   // number of facet columns
         _warningsID = 'warnings',
+        _guiPanelID = 'guiPanel',
         _aspectRatio = 2.0; // width to height ratio of facets
     
 
@@ -96,6 +99,8 @@ var meowcow = (function() {
     var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight] == 'Auto' ? false : d.plotFacets[_minRowHeight][0]; }
     var getFacetAutoHeight = function() { return jQuery('#facet_0').width() / _aspectRatio };
     var getFacetCurrentHeight = function() { return jQuery('#facet_0').height(); };
+    var calcColWidth = function() { return jQuery('#' + _guiPanelID).width() / _numCols };
+    var updateColWidth = function() { jQuery('.facet').css('width',calcColWidth()); }
 
 
      /**
@@ -261,7 +266,6 @@ var meowcow = (function() {
             //formatTooltip(chart, guiVals);
             var datum = d3.select(sel + ' svg')
                             .datum(datReady)
-            console.log(datReady)
 
             // adjust height of all rows if min row height has changed
             var rowHeight = getFacetMinHeight(formVals); // will be false if slider set to 'Auto'
@@ -279,7 +283,7 @@ var meowcow = (function() {
                 datum.call(chart);
             }
 
-            nv.utils.windowResize(function() { chart.update; } ); // TODO update facet col widths on window resize
+            nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
             return chart;
@@ -316,8 +320,8 @@ var meowcow = (function() {
         var colDat, colWrap, plotDom;
         var rowDat = ['row0'];
         var colDat = ['col0'];
-        var numRows = rowDat.length;
-        var numCols = colDat.length;
+        _numRows = rowDat.length;
+        _numCols = colDat.length;
         var plotDom = d3.select('#' + _canvasWrap);
         var facetVals = guiVals.plotFacets;
         var minRowHeight = getFacetMinHeight(guiVals);
@@ -333,18 +337,18 @@ var meowcow = (function() {
             }
             colWrap = (facetVals.colWrap) ? convertToNumber(facetVals.colWrap) : false;
 
-            numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
-            numCols = (colWrap) ? colWrap : colDat.length;
+            _numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
+            _numCols = (colWrap) ? colWrap : colDat.length;
         }
 
         // calculate width/height of each facet 
-        var colWidth = jQuery('#guiPanel').width() / numCols;
+        var colWidth = calcColWidth();
         var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / _aspectRatio;
 
         // generate DOM elements
         var facetCount = 0;
         var plotCount = 1;
-        for (var i = 0; i < numRows; i++) {
+        for (var i = 0; i < _numRows; i++) {
 
             if (d3.select('#row_'+i).empty()) { // dont generate row if it already exists
                 var row = plotDom.append('div')
@@ -352,13 +356,12 @@ var meowcow = (function() {
                     .attr('id', 'row_' + i);
 
                 if (d3.select('#facet_'+facetCount).empty()) {
-                    for (var j = 0; j < numCols; j++) {
+                    for (var j = 0; j < _numCols; j++) {
                         row.append('div')
-                            .attr('class', facetCount%2==0 ? 'facet fill' : 'facet')
+                            .attr('class', 'facet ' + (facetCount%2==0 ? 'fill' : ''))
                             .attr('id','facet_'+facetCount)
                             .style({height: rowHeight + 'px', width: colWidth + 'px'})
                             .append('svg')
-                            //.attr('id','plot_'+plotCount);
                         facetCount++;
 
                         plotCount += 1;
@@ -367,7 +370,7 @@ var meowcow = (function() {
             }
 
             // this will prevent the final row from filling with facets
-            if (colWrap && i == (numRows - 2) ) numCols = (colDat.length % colWrap) ? colDat.length % colWrap : colWrap; 
+            if (colWrap && i == (_numRows - 2) ) _numCols = (colDat.length % colWrap) ? colDat.length % colWrap : colWrap; 
 
         }
 

@@ -1,3 +1,6 @@
+////////// BUGS //////////////
+// sliders not reseting when clicking filter reset button
+
 var GUI = (function() {
     //============================================================
     // GUI class
@@ -42,6 +45,7 @@ var GUI = (function() {
         _warningsID = 'warnings',        // ID to give to warnings DOM
         _renderBtnID = 'renderBtn',      // ID for render button
         _plotTypesID = 'plotTypes',      // ID for plot types tab
+        _guiPanelID = 'guiPanel',
         _setupTab = 'plotSetup',         // ID for plot setup tab
         _facetsTab = 'plotFacets',       // ID for plot facets tab
         _optionsTab = 'plotOptions',     // ID for plot options tab
@@ -213,7 +217,6 @@ var GUI = (function() {
                     }
                 });
 
-
                 Object.keys(colTypes).forEach(function(col) {
                     var colType = colTypes[col];
                     
@@ -232,7 +235,8 @@ var GUI = (function() {
                         var sliderObj = d3.select('#'+col).node().noUiSlider
                         var startVals = sliderObj.options.start;
                         var prevVals = _guiVals0[_filtersTab][col];
-                        var currentVals = sliderObj.get().map(function(d) { return convertToNumber(d); })
+                        //var currentVals = sliderObj.get().map(function(d) { return convertToNumber(d); })
+                        var currentVals = _sliderValues[tab][col];
 
                         if (startVals[0] != currentVals[0] || startVals[1] != currentVals[1]) {
                             _guiVals[tab][col] = _sliderValues[tab][col];
@@ -447,7 +451,7 @@ var GUI = (function() {
         // manually add in user specified column type
         if (colTypes) {
             Object.keys(colTypes).forEach(function(d,i) {
-                colMap[d] = Object.values(colTypes)[i];
+                if (d in colMap) colMap[d] = Object.values(colTypes)[i];
             })
         }
 
@@ -688,7 +692,8 @@ var GUI = (function() {
             addTab(_filtersTab, 'Filters', note);
 
             // generate an input for each of the columns in the loaded dataset
-            for (var col in colTypes) {
+            //for (var col in colTypes) {
+            Object.keys(colTypes).forEach(function(col) {
                 var colType = colTypes[col]
                 var colVals = _unique[col];
 
@@ -748,7 +753,7 @@ var GUI = (function() {
                         var picker2 = this.id;
                     })
                 }
-            }
+            })
 
             // filter reset button
             // initially hide it
@@ -813,7 +818,6 @@ var GUI = (function() {
 
         }
 
-        addClearFix(_optionsTab);
     }
 
     /**
@@ -988,10 +992,37 @@ var GUI = (function() {
         makeOptionsTab();
         makeFiltersTab();
         makeDataTab();
+        addClearFix(_optionsTab);
         jQuery("#" + _setupTab + 'Tab a').tab('show'); // show setup tab
 
     }
 
+    /**
+     * Given a DOM element, function will return
+     * the bootstrap column width if the element
+     * has a bootstrap column class. For example,
+     * the element with class .col-sm-4 would
+     * return the interger 4.
+     * 
+     * @param {obj} - DOM element (e.g. this)
+     *
+     * @return {int} - column width, as a number
+     *   between 1 and 12 (inclusive); if DOM
+     *   element was not a bootstrap column, 0
+     *   is returned
+     */
+    function getBootstrapColWidth(el) {
+        var allClass = jQuery(el).attr('class');
+        var colClass = allClass.split(' ').filter(function(d) { return d.includes('col-'); }); // array of classes that contain string col-
+
+        for (var i = 0; i < colClass.length; i++) {
+            var d = colClass[i];
+            var last = parseInt(d[d.length - 1]);
+            if (isInt(last)) return last;
+        };
+
+        return 0;
+    }
     /**
      * Add clearfix so that columns wrap properly
      *
@@ -1002,11 +1033,12 @@ var GUI = (function() {
      */
     function addClearFix(selector) {
 
-        jQuery(selector + 'Tab a').tab('show'); // tab must be visible for jquery to calculate positions
+        jQuery('#' + selector + 'Tab a').tab('show'); // tab must be visible for jquery to calculate positions
 
-        var cols = jQuery(selector + ' div.form-group');
+        var cols = jQuery('#' + selector + ' div.form-group');
         var colCount = 0;
 
+        console.log(cols)
         cols.each(function(i, col) {
             colCount += getBootstrapColWidth(this);
             
@@ -1016,7 +1048,6 @@ var GUI = (function() {
             }
         });
     }
-
 
     /**
      * Append a tab to the GUI, assume ul .nav already exists
@@ -1094,7 +1125,7 @@ var GUI = (function() {
 
         var guiCol = guiRow.append("div")
             .attr("class","col-sm-12")
-            .attr('id','guiPanel');
+            .attr('id',_guiPanelID);
 
         var warningsCol = d3.select(container)
             .append("div")
@@ -1165,6 +1196,7 @@ var GUI = (function() {
         if (!validateGUIsettings(_guiVals)) return;
 
         // filter data if needed
+        console.log(_guiVals[_filtersTab]);
         if (filterOptionsHaveChanged() && Object.keys(_guiVals[_filtersTab]).length) {
             filterData(data.data, _guiVals[_filtersTab], function() { formSubmit() }); // will update _dataToRender
         } else {
