@@ -1,5 +1,5 @@
 ////////// BUGS //////////////
-// sliders not reseting when clicking filter reset button
+// gui not getting plotType = 'scatter' properly
 
 var GUI = (function() {
     //============================================================
@@ -550,6 +550,7 @@ var GUI = (function() {
                     modalBody.append('i')
                         .attr('class','fa fa-spinner fa-pulse fa-2x fa-fw');
                     modalBody.append('span')
+                        .attr('class','lead')
                         .text('Loading...');
 
                     return {action: "continue"};
@@ -1038,7 +1039,6 @@ var GUI = (function() {
         var cols = jQuery('#' + selector + ' div.form-group');
         var colCount = 0;
 
-        console.log(cols)
         cols.each(function(i, col) {
             colCount += getBootstrapColWidth(this);
             
@@ -1196,7 +1196,6 @@ var GUI = (function() {
         if (!validateGUIsettings(_guiVals)) return;
 
         // filter data if needed
-        console.log(_guiVals[_filtersTab]);
         if (filterOptionsHaveChanged() && Object.keys(_guiVals[_filtersTab]).length) {
             filterData(data.data, _guiVals[_filtersTab], function() { formSubmit() }); // will update _dataToRender
         } else {
@@ -1735,7 +1734,7 @@ var GUI = (function() {
         for (var col in colTypes) {
             var colType = colTypes[col];
             if (colType == 'int' || colType == 'float') {
-                var slider = d3.select('#'+tabID).select('.noUi-target').node()
+                var slider = d3.select('#'+col).node()
                 if (slider) slider.noUiSlider.reset();
             } else if (colType == 'datetime' || colType == 'date') {
                 jQuery('#'+col).data("DateTimePicker").date(moment(_unique[col][0]));
