@@ -16,6 +16,7 @@ Quickly visualize multi-dimensional data through various charting types such as:
 - help modal for each plot type showing an example SVG - should make this a config option too
 - plot options for line plot: isArea, defined; data options: area, classed, 
 - save svg button
+- order all the filters by type (e.g. group all sliders together)
 
 overal chart options:
 - log scale axes

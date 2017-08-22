@@ -19,7 +19,8 @@ var guiSetup = {
                 {
                     type: 'ordinal',
                     accessor: 'lineGroup', 
-                    label: 'Color group' // option label; if not provided, accessor value will be used - OPTIONAL
+                    label: 'Color group', // option label; if not provided, accessor value will be used - OPTIONAL
+                    addOption: {None: false},
                 } 
             ],
             options: [ // plot options - see NVD3 documentation 
@@ -67,7 +68,7 @@ var guiSetup = {
                 {
                     type: 'ordinal',
                     accessor: 'pointGroup', 
-                    label: 'Color group',
+                    label: 'Groups',
                     addOption: {None: false},
                 } 
             ],
@@ -102,6 +103,7 @@ var guiSetup = {
                 {
                     type: 'quantitative',
                     accessor: 'value', 
+                    label: 'Y',
                 },
                 {
                     label: 'Color group',

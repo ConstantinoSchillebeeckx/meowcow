@@ -38,6 +38,7 @@ var meowcow = (function() {
         _numCols,   // number of facet columns
         _warningsID = 'warnings',
         _guiPanelID = 'guiPanel',
+        _currentPlotType = false, // current plot type rendered
         _aspectRatio = 2.0; // width to height ratio of facets
     
 
@@ -140,7 +141,6 @@ var meowcow = (function() {
         }
         jQuery('#' + _warningsID).empty();
 
-
         // draw plot in each facet
         var chartCount = 0;
         _facetRows.forEach(function(rowName,i) {
@@ -212,7 +212,7 @@ var meowcow = (function() {
             console.log('Rendering ' + plotType);
 
             // load previous chart if it exists
-            if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged()) {
+            if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged() && formVals.plotSetup.plotTypes == _currentPlotType) {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
                 console.log('loading previous chart')
@@ -257,13 +257,26 @@ var meowcow = (function() {
                     optsSet[optionName] = optionValue;
                 })
             }
+
+            // set margin
+            var margin = {
+                top: formVals.plotSetup.marginTop, 
+                right: formVals.plotSetup.marginRight, 
+                bottom: (formVals.plotSetup.marginBottom < 60 && formVals.plotSetup.xLabel) ? 60 : formVals.plotSetup.marginBottom, 
+                left: (formVals.plotSetup.marginLeft < 73 && formVals.plotSetup.xLabel) ? 73 : formVals.plotSetup.marginLeft, 
+            };
+            chart.margin(margin);
+            optsSet['margin'] = margin;
+
+            // TODO if automatically adding margin space due to axis labels, update the GUI slider
+
             console.log(optsSet)
 
             // set title
             //if (title !== null && title) chart.title(title); // need to ensure all chart types have the title option
+            console.log(formVals)
 
-            //formatAxisTitle(chart, guiVals);
-            //formatTooltip(chart, guiVals);
+            formatAxisTitle(chart, _gui.colTypes(), formVals.plotSetup.xLabel, formVals.plotSetup.yLabel);
             var datum = d3.select(sel + ' svg')
                             .datum(datReady)
 
@@ -286,9 +299,45 @@ var meowcow = (function() {
             nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
+            _currentPlotType = formVals.plotSetup.plotTypes;
+
             return chart;
         });
     }
+
+
+    /*
+     * Add axis title and format tick labels based on
+     * field type.
+     *
+     * @param {obj} chart - nvd3 chart object
+     * @param {obj} colTypes - column type of each column
+     *              of the input data. e.g. float, str
+     * @param {str} x - label for x-axis
+     * @param {str} y - label for y-ayis
+     *
+     * @return void
+     */
+
+    function formatAxisTitle(chart, colTypes, x, y) {
+
+        if (x) {
+            if (colTypes[x] === 'float') {
+                chart.xAxis.tickFormat(d3.format('.02f'));
+            }
+            chart.showXAxis(true);
+            chart.xAxis.axisLabel(x);
+        }
+        if (y) {
+            if (colTypes[y] === 'float') {
+                chart.yAxis.tickFormat(d3.format('.02f'));
+            }
+            chart.showYAxis(true);
+            chart.yAxis.axisLabel(y);
+        }
+
+    }
+
 
 
 

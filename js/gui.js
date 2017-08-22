@@ -46,6 +46,7 @@ var GUI = (function() {
         _renderBtnID = 'renderBtn',      // ID for render button
         _plotTypesID = 'plotTypes',      // ID for plot types tab
         _guiPanelID = 'guiPanel',
+        _globalSetupInputsID = 'globalSetupInputs',
         _setupTab = 'plotSetup',         // ID for plot setup tab
         _facetsTab = 'plotFacets',       // ID for plot facets tab
         _optionsTab = 'plotOptions',     // ID for plot options tab
@@ -235,7 +236,6 @@ var GUI = (function() {
                         var sliderObj = d3.select('#'+col).node().noUiSlider
                         var startVals = sliderObj.options.start;
                         var prevVals = _guiVals0[_filtersTab][col];
-                        //var currentVals = sliderObj.get().map(function(d) { return convertToNumber(d); })
                         var currentVals = _sliderValues[tab][col];
 
                         if (startVals[0] != currentVals[0] || startVals[1] != currentVals[1]) {
@@ -895,17 +895,50 @@ var GUI = (function() {
 
         // delete all but first form input in case there was a plotType change
         // since each plot type may not have the same axes setup
-        d3.selectAll('#'+_setupTab+' .form-group').filter(function(d,i) { return i > 0}).remove();
+        d3.selectAll('#toUpdate .form-group').remove();
 
         availableAxes.forEach(function(axisSetup,i) {
             if ('type' in axisSetup && 'accessor' in axisSetup) {
                 var cols = getColsByType(axisSetup.type);
                 var label = "label" in axisSetup ? axisSetup.label : axisSetup.accessor;
-                var domClass = (i > 1 && (i + 1) % 2) ? 'col-sm-4 col-sm-offset-4' : 'col-sm-4'; // offset so nothing under plot type select
+                var domClass = 'col-sm-4' // + ((i > 1 && (i + 1) % 2) ? ' col-sm-offset-4' : ''); // offset so nothing under plot type select
                 var opts = {values:cols, id:axisSetup.accessor, label:capitalize(label), domClass:domClass, addOption:axisSetup.addOption};
-                generateFormSelect(_setupTab, opts);
+                generateFormSelect('toUpdate', opts);
             }
         });
+
+        // these inputs are always present, no matter the plot type
+        // e.g. axis title or margin
+        if (d3.select('#'+_globalSetupInputsID).empty()) {
+            d3.select('#'+_setupTab).append('div')
+                .attr('class','col-sm-12')
+                .append('div')
+                .attr('class','row')
+                .attr('id',_globalSetupInputsID)
+                
+            var sliderOptions = {range: {'min':0, 'max':100}, step:1, connect: [true, false]}
+            var sliderFormat = function(d) { return '[' + d + ']' };
+
+            sliderOptions.start = 30;
+            var opts =  {id:'marginLeft', label:'Left margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
+            generateFormSlider(_globalSetupInputsID, opts);
+
+            sliderOptions.start = 5;
+            var opts =  {id:'marginRight', label:'Right margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
+            generateFormSlider(_globalSetupInputsID, opts);
+
+            sliderOptions.start = 10;
+            var opts =  {id:'marginTop', label:'Top margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
+            generateFormSlider(_globalSetupInputsID, opts);
+
+            sliderOptions.start = 40;
+            var opts =  {id:'marginBottom', label:'Bottom margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
+            generateFormSlider(_globalSetupInputsID, opts);
+
+            generateFormTextInput(_globalSetupInputsID, {id:'xLabel', label:'X-axis label', type:'text', domClass: 'col-sm-3',});
+            generateFormTextInput(_globalSetupInputsID, {id:'yLabel', label:'Y-axis label', type:'text', domClass: 'col-sm-3',});
+
+        }
     }
 
     /*
@@ -985,8 +1018,15 @@ var GUI = (function() {
         var note = 'Choose the type of plot to be rendered along with the proper data for each axis.';
         addTab(_setupTab, 'Setup', note, true);
 
+
         var select = generateFormSelect(_setupTab, {values:getPlotTypes(), id:_plotTypesID, label:"Plot type"})
         select.on('change', plotTypeChange);
+
+        d3.select('#'+_setupTab).append('div')
+            .attr('class','col-sm-12')
+            .append('div')
+            .attr('class','row')
+            .attr('id','toUpdate')
 
         makeSetupTab();
         makeFacetsTab();
@@ -1627,9 +1667,10 @@ var GUI = (function() {
 
         // generate slider
         var uiSlider = noUiSlider.create(slider, opts.options);
-        var tabName = selector.replace('#','');
+        var tabName = jQuery('#'+selector).closest('.tab-pane').attr('id').replace('#','');
         var initValue = opts.options.start;
         if (!(tabName in _sliderValues)) _sliderValues[tabName] = {};
+
 
         // set initial value in title
         if (showValueReplace && (initValue == opts.options.range.min || initValue == opts.options.range.max)) {
@@ -1658,6 +1699,7 @@ var GUI = (function() {
 
             // store slider values into gui global
             // replace the value with min/max ValueReplace if present
+            // this allows use to implement min/max valueReplace
             var sliderValue;
             _sliderValues[tabName][id] = d.map(function(e, i) { 
                 if (i == 0) {
@@ -1699,7 +1741,6 @@ var GUI = (function() {
             .attr('class', 'form-group ' + opts.domClass)
             
         var span = formGroup.append('span')
-            .attr('id',opts.accessor + 'Wrap')
         
         span.append('label')
             .attr('for',opts.accessor)
