@@ -17,6 +17,7 @@ Quickly visualize multi-dimensional data through various charting types such as:
 - plot options for line plot: isArea, defined; data options: area, classed, 
 - save svg button
 - order all the filters by type (e.g. group all sliders together)
+- resize width on width resize (updateColWidth())
 
 overal chart options:
 - log scale axes
@@ -126,7 +127,7 @@ Each of the items listed in this entry will generate a form input in the options
 - **accessor** - str, accessor with which to set plot option, must be a NVD3 model option for the given plot type - REQUIRED
 - **label** - str, label to give to form input; if not provided, accessor value will be used - OPTIONAL
 - **help** - obj, if provided, a help icon will be rendered next to the form input which serves as a bootstrap popover for provided the user with details regarding the specific option. It uses the same format as the bootstrap popover options, see [docs](https://getbootstrap.com/javascript/#popovers) - OPTIONAL
-- **class** str, class to give to input group e.g. col-sm-4
+- **domClass** str, class to give to input group e.g. col-sm-4
 - **required** - bool, whether to set the form input as required - OPTIONAL, default false
 
 Along with the entries shown above, each input type has specific options.
@@ -134,6 +135,7 @@ Along with the entries shown above, each input type has specific options.
 **select**
 - **values** - array or object, populate the select input with these values; if an object is provided, the keys will set the select labels and the values will set the select values - REQUIRED
 - **addOption** - array or object, additional option to prepend to select options, formatted similarly to `values` - OPTIONAL
+- **setDefault** - str, default value used to set default option - OPTIONAL
 
 **toggle**
 - **options** - obj, options for toggle, must have same format as the bootstrap toggle options, see [docs](https://github.com/minhur/bootstrap-toggle/#options) - REQUIRED

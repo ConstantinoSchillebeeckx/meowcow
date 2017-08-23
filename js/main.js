@@ -38,7 +38,6 @@ var meowcow = (function() {
         _numCols,   // number of facet columns
         _warningsID = 'warnings',
         _guiPanelID = 'guiPanel',
-        _currentPlotType = false, // current plot type rendered
         _aspectRatio = 2.0; // width to height ratio of facets
     
 
@@ -102,6 +101,10 @@ var meowcow = (function() {
     var getFacetCurrentHeight = function() { return jQuery('#facet_0').height(); };
     var calcColWidth = function() { return jQuery('#' + _guiPanelID).width() / _numCols };
     var updateColWidth = function() { jQuery('.facet').css('width',calcColWidth()); }
+    var marginTop = function(d) { return d.plotSetup.marginTop[0]; }
+    var marginBottom = function(d) { return d.plotSetup.marginBottom[0]; }
+    var marginLeft = function(d) { return d.plotSetup.marginLeft[0]; }
+    var marginRight = function(d) { return d.plotSetup.marginRight[0]; }
 
 
      /**
@@ -124,9 +127,9 @@ var meowcow = (function() {
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
         // of if the filtering is changed
-        if (_gui.facetOptionsHaveChanged() || _gui.filterOptionsHaveChanged()) { 
+        if (_gui.facetOptionsHaveChanged() || _gui.filterOptionsHaveChanged() || _gui.plotTypeHasChanged()) { 
 
-            if (_gui.facetOptionsHaveChanged()) jQuery(canvas).empty();  // clear out facets if facet options changed
+            if (_gui.facetOptionsHaveChanged() || _gui.plotTypeHasChanged()) jQuery(canvas).empty();  // clear out facets if facet options changed
             _facets = setupFacetGrid(guiVals, _gui.data());
 
 
@@ -150,7 +153,7 @@ var meowcow = (function() {
 
                 if (typeof facetDat !== 'undefined') {
 
-                    var title = null;
+                    var title = guiVals.plotSetup.chartTitle
                     if (_facetVals.facetOn) {
                         if (_hVal && _vVal) {
                             title = _vVal + ' = ' + rowName + ' | ' + _hVal + ' = ' + colName;
@@ -202,7 +205,7 @@ var meowcow = (function() {
         var datReady = dat;
         var parseFunc = plotOptions.parseData;
         if (typeof parseFunc === "function") {
-            datReady = parseFunc(dat);
+            datReady = parseFunc(dat); // TODO ?
         }
 
         // create the chart
@@ -210,9 +213,12 @@ var meowcow = (function() {
         var chartUpdate = false; // whether the chart should be updated
         nv.addGraph(function() {
             console.log('Rendering ' + plotType);
-
-            // load previous chart if it exists
-            if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged() && formVals.plotSetup.plotTypes == _currentPlotType) {
+    
+            // load previous chart if:
+            // - it exists (and)
+            // - facet options have not changed (and)
+            // - plot type has not changed
+            if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged() && !_gui.plotTypeHasChanged()) {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
                 console.log('loading previous chart')
@@ -228,6 +234,7 @@ var meowcow = (function() {
                 var d = plotOptions.axes[axis];
                 var accessorName = d.accessor;
                 var accessorAttr = formVals.plotSetup[d.accessor]; // get the GUI value for the given chart axis option
+
                 if (accessorName) {
                     optsSet[accessorName] = accessorAttr;
                     if (accessorAttr) {
@@ -255,15 +262,17 @@ var meowcow = (function() {
 
                     chart[optionName](optionValue)
                     optsSet[optionName] = optionValue;
+
                 })
             }
 
             // set margin
+            var titleFontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
             var margin = {
-                top: formVals.plotSetup.marginTop, 
-                right: formVals.plotSetup.marginRight, 
-                bottom: (formVals.plotSetup.marginBottom < 60 && formVals.plotSetup.xLabel) ? 60 : formVals.plotSetup.marginBottom, 
-                left: (formVals.plotSetup.marginLeft < 73 && formVals.plotSetup.xLabel) ? 73 : formVals.plotSetup.marginLeft, 
+                top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
+                right: marginRight(formVals), 
+                bottom: (marginBottom(formVals) < 60 && formVals.plotSetup.xLabel) ? 60 : marginBottom(formVals), 
+                left: (marginLeft(formVals) < 73 && formVals.plotSetup.yLabel) ? 73 : marginLeft(formVals), 
             };
             chart.margin(margin);
             optsSet['margin'] = margin;
@@ -271,12 +280,15 @@ var meowcow = (function() {
             // TODO if automatically adding margin space due to axis labels, update the GUI slider
 
             console.log(optsSet)
-
-            // set title
-            //if (title !== null && title) chart.title(title); // need to ensure all chart types have the title option
             console.log(formVals)
 
+            // set title
+            formatChartTitle(sel, title, titleFontSize); 
+
+            // set axis labels
             formatAxisTitle(chart, _gui.colTypes(), formVals.plotSetup.xLabel, formVals.plotSetup.yLabel);
+
+
             var datum = d3.select(sel + ' svg')
                             .datum(datReady)
 
@@ -299,10 +311,38 @@ var meowcow = (function() {
             nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
-            _currentPlotType = formVals.plotSetup.plotTypes;
-
             return chart;
         });
+    }
+
+
+    /**
+     * Add a DOM element within the chart SVG
+     * which acts as a chart title; it will 
+     * be centered on the chart
+     *
+     * @param {str} sel - chart selector
+     * @param {str} title - title to append to chart
+     * @param {int} fontSize - font size to style title with
+     *
+     * @return void
+     */
+    function formatChartTitle(sel, title, fontSize) {
+   
+        console.log(title) 
+        if (title) {
+
+            console.log(title, sel)
+            var facetWidth = jQuery(sel).width();
+
+            d3.select(sel + ' svg').append('g')
+                .attr('class','chartTitle')
+                .attr('transform', function(d) { return 'translate('+ facetWidth/2 +','+ fontSize + ')'; })
+                .append('text')
+                .style('text-anchor','middle')
+                .style('font-size', fontSize + 'px')
+                .text(title);
+        }
     }
 
 

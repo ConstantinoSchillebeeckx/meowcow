@@ -38,7 +38,8 @@ var guiSetup = {
                 {
                     accessor: 'useInteractiveGuideline',
                     label: 'Interactive guideline',
-                    type: 'toggle'
+                    type: 'toggle',
+                    domClass: 'col-sm-3',
                 },
                 {
                     accessor: 'focusEnable',
@@ -128,7 +129,8 @@ var guiSetup = {
                     label: 'Observation type',
                     type: 'select',
                     values: ['random','swarm','centered'],
-                    addOption: {None: false}
+                    setDefault: 'centered',
+                    //addOption: {None: false}
                 }, {
                     accessor: 'bandwidth',
                     label: 'KDE bandwidth',
@@ -190,7 +192,7 @@ var guiSetup = {
                         on: 'Yes',
                         off: 'No',
                     },
-                    class: 'col-sm-2',
+                    domClass: 'col-sm-2',
                 }, {
                     accessor: 'squash',
                     label: 'Squash',
@@ -199,7 +201,7 @@ var guiSetup = {
                         on: 'Yes',
                         off: 'No',
                     },
-                    class: 'col-sm-2',
+                    domClass: 'col-sm-2',
                 }, {
                     accessor: 'staggerLabels',
                     label: 'Stagger labels',
@@ -209,7 +211,7 @@ var guiSetup = {
                         off: 'No',
                     },
                     setDefault: true, // set default to on instead of false
-                    class: 'col-sm-2',
+                    domClass: 'col-sm-2',
                 }, {
                     accessor: 'showOnlyOutliers',
                     label: 'Show only outliers',
@@ -219,7 +221,7 @@ var guiSetup = {
                         off: 'No',
                     },
                     setDefault: true, // set default to on instead of false
-                    class: 'col-sm-2',
+                    domClass: 'col-sm-3',
                 }
             ]
         },

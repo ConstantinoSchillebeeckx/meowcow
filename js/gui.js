@@ -126,9 +126,12 @@ var GUI = (function() {
         //return JSON.stringify(_guiVals0[_facetsTab]) !== JSON.stringify(_guiVals[_facetsTab]);
     }
     this.filterOptionsHaveChanged = function() {
-        // return true if previou guiVals are not equal to current ones (assuming user is doing some filtering)
+        // return true if previous filter guiVals are not equal to current ones (assuming user is doing some filtering)
         // or if the reset button is on and no filters are being applied (occurs when user manually resets filters)
         return JSON.stringify(_guiVals0[_filtersTab]) !== JSON.stringify(_guiVals[_filtersTab]) || (filtersOn() && Object.keys(_guiVals[_filtersTab].length > 0));
+    }
+    this.plotTypeHasChanged = function() {
+        return _guiVals0[_setupTab].plotTypes != _guiVals[_setupTab].plotTypes;
     }
     this.getGUIvals = function() { return _guiVals };
 
@@ -176,7 +179,7 @@ var GUI = (function() {
 
                 // parse selects and text input
                 selects.forEach(function(d) {
-                    var value = (d.value == "" || d.value == "false" || d.value == false) ? null : d.value;
+                    var value = (d.value == "") ? null : d.value;
                     _guiVals[tab][d.name] = value;
                 });
 
@@ -233,7 +236,7 @@ var GUI = (function() {
                             delete _guiVals[tab][col];
                         }
                     } else if (colType == 'float' || colType == 'int') { // if slider
-                        var sliderObj = d3.select('#'+col).node().noUiSlider
+                        var sliderObj = d3.select('div#'+col).node().noUiSlider
                         var startVals = sliderObj.options.start;
                         var prevVals = _guiVals0[_filtersTab][col];
                         var currentVals = _sliderValues[tab][col];
@@ -917,7 +920,7 @@ var GUI = (function() {
                 .attr('id',_globalSetupInputsID)
                 
             var sliderOptions = {range: {'min':0, 'max':100}, step:1, connect: [true, false]}
-            var sliderFormat = function(d) { return '[' + d + ']' };
+            var sliderFormat = function(d) { return '[' + Math.round(d) + ']' };
 
             sliderOptions.start = 30;
             var opts =  {id:'marginLeft', label:'Left margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
@@ -935,6 +938,7 @@ var GUI = (function() {
             var opts =  {id:'marginBottom', label:'Bottom margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 
+            generateFormTextInput(_globalSetupInputsID, {id:'chartTitle', label:'Chart title', type:'text', domClass: 'col-sm-3',});
             generateFormTextInput(_globalSetupInputsID, {id:'xLabel', label:'X-axis label', type:'text', domClass: 'col-sm-3',});
             generateFormTextInput(_globalSetupInputsID, {id:'yLabel', label:'Y-axis label', type:'text', domClass: 'col-sm-3',});
 
@@ -1475,6 +1479,7 @@ var GUI = (function() {
      *  in the select list, allows for things like 'All' or 'None' - note this will be the first option
      * @key {obj} attributes - (optional) optional attributes to apply to select e.g. {multiple: true}
      * @key {bool} selectAll - whether to pre-select all options
+     * @key {str} setDefault - must be an entry in 'value', will set this option as pre-selected
      *
      * @return select DOM
      *
@@ -1516,8 +1521,7 @@ var GUI = (function() {
 
         // prepend option to select
         if (opts.addOption) {
-            var value = '';
-            var text = '';
+            var value, text;
             if (typeof opts.addOption !== 'object') {
                 value = opts.addOption;
                 text = value;
@@ -1525,8 +1529,11 @@ var GUI = (function() {
                 value = Object.values(opts.addOption)[0];
                 text = Object.keys(opts.addOption)[0];
             }
-            jQuery('#' + id).prepend('<option value="' + value + '">' + text + '</option>').val(jQuery("#" + id + " option:first").val());
+            if (value == false) value = ''; // this will get converted to a null when parsed by getGuiVal
+            jQuery('#' + id).prepend('<option value=' + value + '>' + text + '</option>').val(jQuery("#" + id + " option:first").val());
         }
+
+        if (opts.setDefault) jQuery('#' + id).val(opts.setDefault);
 
         // selects get set to hidden automatically because tab is
         // hidden (I think...), so manually show them here to ensure
@@ -1583,7 +1590,7 @@ var GUI = (function() {
      * @param {obj} opts - options for select, can contain the following keys:
      * @key {string} id - id/name to give to toggle
      * @key {string} label - label text
-     * @key {str} domClass - (optional, default=col-sm-4) class to assign to 
+     * @key {str} domClass - (optional, default=col-sm-2) class to assign to 
      *   div containing input, should be a boostrap column class type (e.g. col-sm-3)
      * @key {obj} options - toggle options, see http://www.bootstraptoggle.com/ API
      */
@@ -1680,15 +1687,16 @@ var GUI = (function() {
         }
 
         // initialize slider value store
+        // slider values are stored as an array, even if only single handled
         // need to refactor the code
         if (initValue.length == 2) {
             if (typeof minValueReplace !== 'undefined' && initValue[0] == opts.options.range.min) initValue[0] = minValueReplace;
             if (typeof maxValueReplace !== 'undefined' && initValue[1] == opts.options.range.max) initValue[1] = maxValueReplace;
         } else {
-            if (typeof minValueReplace !== 'undefined' && initValue == opts.options.range.min) initValue = minValueReplace;
-            if (typeof maxValueReplace !== 'undefined' && initValue == opts.options.range.max) initValue = maxValueReplace;
+            if (typeof minValueReplace !== 'undefined' && initValue == opts.options.range.min) initValue = [minValueReplace];
+            if (typeof maxValueReplace !== 'undefined' && initValue == opts.options.range.max) initValue = [maxValueReplace];
         }
-        _sliderValues[tabName][id] = initValue;
+        _sliderValues[tabName][id] = Array.isArray(initValue) ? initValue : [initValue];
 
         // add event listener for slider change
         uiSlider.on('slide', function(d) {
