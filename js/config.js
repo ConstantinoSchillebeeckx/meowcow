@@ -103,7 +103,7 @@ var guiSetup = {
                 },
                 {
                     type: 'quantitative',
-                    accessor: 'value', 
+                    accessor: 'y', 
                     label: 'Y',
                 },
                 {
@@ -151,7 +151,7 @@ var guiSetup = {
                     options: {start: 50, range: {'min':0, 'max':100}, step:1, connect: [true, false]},
                     format: function(d) { return '[' + parseInt(d) + ']' }
                 }, {
-                    accessor: 'showMiddle',
+                    accessor: 'centralTendency',
                     label: 'Middle line',
                     type: 'select',
                     values: {Mean: 'mean', Median: 'median', None: false}
@@ -170,7 +170,7 @@ var guiSetup = {
                     minValueReplace: null, // replace slider value with this if slider on minimum (0 in this case)
                     showValueReplace: false, // show value specified by either minValueReplace/maxValueReplace in GUI
                 }, {
-                    accessor: 'observationRadius',
+                    accessor: 'pointSize',
                     label: 'Observation radius',
                     type: 'slider',
                     options: {start: 3, range: {'min':0, 'max':20}, step:1, connect: [true, false],},
