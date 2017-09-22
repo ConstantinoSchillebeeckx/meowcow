@@ -163,7 +163,8 @@ var meowcow = (function() {
                     }
 
                     // draw plot
-                    populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
+                    var asdf = populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
+                    console.log(asdf);
                 }
                 chartCount += 1;
             });
@@ -230,10 +231,16 @@ var meowcow = (function() {
             // we will need the name of the accessor function to be called on the chart
             // as well as the actual accessor function (which is defined by the GUI)
             var optsSet = {};
-            Object.keys(plotOptions.axes).forEach(function(axis) {
+            Object.keys(plotOptions.axes).every(function(axis) {
                 var d = plotOptions.axes[axis];
                 var accessorName = d.accessor;
                 var accessorAttr = formVals.plotSetup[d.accessor]; // get the GUI value for the given chart axis option
+
+                // ensure option from config is valid
+                if (!checkIfIsOption(chart[accessorName], accessorName)) {
+                    d3.select(sel).remove()
+                    return false;
+                }
 
                 if (accessorName) {
                     optsSet[accessorName] = accessorAttr;
@@ -243,13 +250,20 @@ var meowcow = (function() {
                         chart[accessorName](accessorAttr);
                     }
                 }
+
+                return true; // since we're looping with a [].every()
             });
 
             // set chart options
             if ('options' in plotOptions) {
-                plotOptions.options.forEach(function(d) {
+                plotOptions.options.every(function(d) {
                     var optionName = d.accessor;
                     var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
+
+                    if (!checkIfIsOption(chart[optionName], optionName)) {
+                        d3.select(sel).remove()
+                        return false;
+                    }
 
                     // if GUI option was an array (for a single handle slider) grab the only element
                     if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
@@ -263,8 +277,10 @@ var meowcow = (function() {
                     chart[optionName](optionValue)
                     optsSet[optionName] = optionValue;
 
+                    return true; // since we're looping with a [].every()
                 })
             }
+
 
             // set margin
             var titleFontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
@@ -311,8 +327,9 @@ var meowcow = (function() {
             nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
-            return chart;
         });
+       
+        return chart;
     }
 
 
@@ -520,6 +537,25 @@ var meowcow = (function() {
 
     }
 
+
+    /**
+     * Used to check whether a particular option set
+     * in config.js is valid for the given plot. If
+     * not, an error message is displayed.
+     *
+     * @param {} 
+     *
+     * @return - false if option is not valid
+     */
+    function checkIfIsOption(func, str) {
+
+        if (typeof func !== "function") {
+            displayWarning("The chart option <code>" + str + "</code> does not exist for this chart; please change it in your config.", _warningsID, true);
+            return false;
+        }
+        return true;
+    }
+
     //============================================================
     // Expose
     //------------------------------------------------------------
@@ -580,3 +616,4 @@ function convertToNumber(str) {
     return (isNaN(convert)) ? str : convert;
 
 }
+

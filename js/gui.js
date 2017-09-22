@@ -653,7 +653,7 @@ var GUI = (function() {
      *
      * @param {str} type - type of columns requested, either quantitative
      *   (int, float) or ordinal (str, datetime); if not provided, will return
-     *   colTYpes
+     *   all columns.
      *
      * @return {array/obj} 
      *  - column names that match column type
@@ -663,6 +663,8 @@ var GUI = (function() {
         if (typeof type !== 'undefined') {
             var filter = type == 'quantitative' ? ['int','float'] : type == 'ordinal' ? ['datetime','str'] : ['int','float','datetime','str'];
             return Object.keys(colTypes).filter(function(e) { return filter.indexOf(colTypes[e]) != -1  })
+        } else {
+            return Object.keys(colTypes);
         }
     };
 
@@ -901,7 +903,7 @@ var GUI = (function() {
         d3.selectAll('#toUpdate .form-group').remove();
 
         availableAxes.forEach(function(axisSetup,i) {
-            if ('type' in axisSetup && 'accessor' in axisSetup) {
+            if ('accessor' in axisSetup) {
                 var cols = getColsByType(axisSetup.type);
                 var label = "label" in axisSetup ? axisSetup.label : axisSetup.accessor;
                 var domClass = 'col-sm-4' // + ((i > 1 && (i + 1) % 2) ? ' col-sm-offset-4' : ''); // offset so nothing under plot type select

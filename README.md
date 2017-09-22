@@ -115,7 +115,7 @@ Each of the keys in this entry will populate the plot type select input located 
 
 Each entry in this list will generate a select input in the setup tab of the GUI and will bind the proper data attribute to the plot's primary axes; must be formatted as an object with the following entries:
 
-- **type** - str, the data attribute's data type, either [`quantitative`]() or [`ordinal`]() - REQUIRED
+- **type** - str, the data attribute's data type, either [`quantitative`]() or [`ordinal`](); if not provided, it is assumed any data type will do - OPTIONAL
 - **accessor** - str, accessor with which to bind data attribute, must be a NVD3 model option for the given plot type - REQUIRED
 - **label** - str, label to give to axes select; if not provided, accessor value will be used - OPTIONAL
 

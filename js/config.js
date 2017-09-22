@@ -3,6 +3,59 @@ var guiSetup = {
     useToyData: true, // whether to show toy data options in file upload modal
     missing: "", // data to treat as missing
     plotTypes: {
+        heatMap: { // plot type, must be available as a model in NVD3
+            allowFacets: true, // whether to display facets tab - OPTIONAL, default true
+            //parseData: function(d) { return d.map(function(e) { return e.Study }); }, // function used to preprocess data before rendering - OPTIONAL, default false TODO
+            label: 'Heatmap', // label to use in select option for this plot type; if not provided, plot type will be used - OPTIONAL
+            axes: [ // bind the proper data attribute to the plot's primary axes
+                {
+                    accessor: 'x', // accessor for given plot type - REQUIRED
+                },
+                {
+                    accessor: 'y', 
+                },
+                {
+                    accessor: 'cellValue', 
+                    label: 'Cell value', // option label; if not provided, accessor value will be used - OPTIONAL
+                } 
+            ],
+            options: [ // plot options - see NVD3 documentation 
+                {
+                    accessor: 'normalize',
+                    label: 'Normalize',
+                    type: 'select',
+                    values: ['centerRow',
+                        'robustCenterRow',
+                        'centerScaleRow',
+                        'robustCenterScaleRow',
+                        'centerColumn',
+                        'robustCenterColumn',
+                        'centerScaleColumn',
+                        'robustCenterScaleColumn',
+                        'centerAll',
+                        'robustCenterAll',
+                        'centerScaleAll',
+                        'robustCenterScaleAll']
+                },
+                {
+                    accessor: 'highContrastText',
+                    label: 'High contrast text',
+                    type: 'toggle'
+                },
+                {
+                    accessor: 'showCellValues',
+                    label: 'Show cell values',
+                    type: 'toggle',
+                },
+                {
+                    accessor: 'cellBorderWidth',
+                    label: 'Cell border width',
+                    type: 'slider',
+                    options: {start: 4, range: {'min':0, 'max':10}, step:1, connect: [true, false]},
+                    format: function(d) { return '[' + parseInt(d) + ']' }
+                },
+            ]
+        },
         lineChart: { // plot type, must be available as a model in NVD3
             allowFacets: true, // whether to display facets tab - OPTIONAL, default true
             //parseData: function(d) { return d.map(function(e) { return e.Study }); }, // function used to preprocess data before rendering - OPTIONAL, default false TODO
