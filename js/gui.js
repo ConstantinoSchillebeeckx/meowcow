@@ -932,7 +932,7 @@ var GUI = (function() {
             var opts =  {id:'marginRight', label:'Right margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 
-            sliderOptions.start = 10;
+            sliderOptions.start = 30;
             var opts =  {id:'marginTop', label:'Top margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 

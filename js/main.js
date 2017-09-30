@@ -163,8 +163,7 @@ var meowcow = (function() {
                     }
 
                     // draw plot
-                    var asdf = populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
-                    console.log(asdf);
+                    populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
                 }
                 chartCount += 1;
             });
@@ -318,7 +317,9 @@ var meowcow = (function() {
                 chart.height(getFacetAutoHeight());
             }
 
+
             if (chartUpdate) {
+                console.log(chart)
                 chart.update();
             } else {
                 datum.call(chart);
@@ -346,7 +347,7 @@ var meowcow = (function() {
      */
     function formatChartTitle(sel, title, fontSize) {
    
-        console.log(title) 
+        //console.log(title) 
         if (title) {
 
             console.log(title, sel)

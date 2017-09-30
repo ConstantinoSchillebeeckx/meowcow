@@ -84,3 +84,19 @@ circle.hover {
     font-size: 2hmin;
 }
 
+.cell-hover rect {
+    stroke-width: 3;
+    fill-opacity: 0.2;
+}
+
+.cell-hover text {
+    fill: #000 !important;
+}
+
+.no-hover {
+    fill-opacity: 0.2;
+}
+
+.gridLines {
+    stroke: rgb(155,155,155);
+}

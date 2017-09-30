@@ -41,9 +41,16 @@
         <script src="lib/bootstrap-select/dist/js/bootstrap-select.min.js"></script>
         <script src="js/toyData.js"></script> <!-- this will load the necessary data into globals for plotting -->
         <script src="js/tall.js"></script> <!-- this will load the necessary data into globals for plotting -->
+        <script src="js/configHeatmap.js"></script>
+        <script src="js/configScatter.js"></script>
+        <script src="js/configDistroplot.js"></script>
+        <script src="js/configLine.js"></script>
         <script src="js/config.js"></script>
         <script src="js/main.js"></script>
         <script src="js/gui.js"></script>
+
+
+        <script src="lib/nvd3/src/models/heatMap.js"></script>
 
 
 
@@ -54,7 +61,7 @@
     <script>
         $(function() {
 
-            var moo = meowcow()
+            moo = meowcow()
                 .container('#renderHere')
                 // .data(inputDat) // inputDat loaded with tall.js - remove to call modal for specifying a file manually
                 .config(guiSetup)
