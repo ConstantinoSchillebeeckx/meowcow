@@ -1759,7 +1759,6 @@ var GUI = (function() {
         // add popover
         if (typeof opts.help !== 'undefined') {
 
-
             if (!('container' in opts.help)) opts.help.container = 'div#'+selector; // constrain popover to GUI if not specified
 
             span.attr('data-toggle','popover')
@@ -1767,7 +1766,7 @@ var GUI = (function() {
                 .attr('class','fa fa-info-circle text-primary')
                 .attr('aria-hidden',true)
                 .style('margin-left','5px')
-            jQuery('#' + opts.accessor + 'Wrap').popover(opts.help);
+            jQuery(span).popover(opts.help);
         }
 
         return formGroup;
