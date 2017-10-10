@@ -1025,7 +1025,7 @@ var GUI = (function() {
         addTab(_setupTab, 'Setup', note, true);
 
 
-        var select = generateFormSelect(_setupTab, {values:getPlotTypes(), id:_plotTypesID, label:"Plot type"})
+        var select = generateFormSelect(_setupTab, {values:getPlotTypes(), id:_plotTypesID, label:"Plot type", domClass:"col-sm-2"})
         select.on('change', plotTypeChange);
 
         d3.select('#'+_setupTab).append('div')

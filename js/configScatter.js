@@ -27,10 +27,14 @@ var scatterConfig = {
             label: 'Show Y distr.',
             type: 'toggle'
         },
+/*
+this option doesn't 
+seem to do anything
         {
             accessor: 'showLabels', 
             label: 'Show labels',
             type: 'toggle'
         },
+*/
     ]
 }

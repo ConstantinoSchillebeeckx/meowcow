@@ -272,6 +272,7 @@ var meowcow = (function() {
 
                     // convert bool string into bool
                     optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
+                    console.log(optionValue, optionName);
 
                     chart[optionName](optionValue)
                     optsSet[optionName] = optionValue;
