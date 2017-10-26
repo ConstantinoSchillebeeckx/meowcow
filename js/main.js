@@ -283,7 +283,6 @@ var meowcow = (function() {
 
 
             // set margin
-            var titleFontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
             var margin = {
                 top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
                 right: marginRight(formVals), 
@@ -297,12 +296,6 @@ var meowcow = (function() {
 
             console.log(optsSet)
             console.log(formVals)
-
-            // set title
-            formatChartTitle(sel, title, titleFontSize); 
-
-            // set axis labels
-            formatAxisTitle(chart, _gui.colTypes(), formVals.plotSetup.xLabel, formVals.plotSetup.yLabel);
 
 
             var datum = d3.select(sel + ' svg')
@@ -323,6 +316,12 @@ var meowcow = (function() {
                 console.log(chart)
                 chart.update();
             } else {
+                // set title
+                formatChartTitle(sel, title, titleFontSize); 
+
+                // set axis labels
+                formatAxisTitle(chart, _gui.colTypes(), formVals.plotSetup.xLabel, formVals.plotSetup.yLabel);
+
                 datum.call(chart);
             }
 
@@ -342,7 +341,9 @@ var meowcow = (function() {
      *
      * @param {str} sel - chart selector
      * @param {str} title - title to append to chart
-     * @param {int} fontSize - font size to style title with
+     * @param {int, optional} fontSize - font size to style title with
+     *        if not provided, will be calculatd automatically based
+     *        on the facet width
      *
      * @return void
      */
@@ -351,7 +352,8 @@ var meowcow = (function() {
         //console.log(title) 
         if (title) {
 
-            console.log(title, sel)
+            if (typeof fontSize === 'undefined') fontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
+
             var facetWidth = jQuery(sel).width();
 
             d3.select(sel + ' svg').append('g')
