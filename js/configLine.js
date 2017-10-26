@@ -22,23 +22,40 @@ var lineConfig = {
             accessor: 'interpolate',
             label: 'Interpolate',
             type: 'select',
-            values: ['linear','step-before','step-after','basis','bundle','cardinal','monotone']
+            values: ['linear','step-before','step-after','basis','bundle','cardinal','monotone'],
+            domClass: "col-sm-2",
+            help: {
+                content: "The type of interpolation to use when connecting points.",
+                title: "Help",
+                trigger: "hover",
+                html: true,
+                placement: "auto right"
+            },
         },
         {
             accessor: 'clipEdge',
             label: 'Clip edge',
-            type: 'toggle'
+            type: 'toggle',
+            help: {
+                content: "If true, masks lines within the X and Y scales using a clip-path.",
+                title: "Help",
+                trigger: "hover",
+                html: true,
+                placement: "auto right"
+            },
         },
         {
             accessor: 'useInteractiveGuideline',
             label: 'Interactive guideline',
             type: 'toggle',
             domClass: 'col-sm-3',
-        },
-        {
-            accessor: 'focusEnable',
-            label: 'Enable focus',
-            type: 'toggle'
+            help: {
+                content: "Sets the chart to use a guideline and floating tooltip instead of requiring the user to hover over specific hotspots.",
+                title: "Help",
+                trigger: "hover",
+                html: true,
+                placement: "auto right"
+            },
         },
         /*{ TODO implement
             accessor: 'strokeWidth',

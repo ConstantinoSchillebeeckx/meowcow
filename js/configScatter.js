@@ -20,21 +20,26 @@ var scatterConfig = {
         {
             accessor: 'showDistX',
             label: 'Show X distr.',
-            type: 'toggle'
+            type: 'toggle',
+            help: {
+                content: "Show the x-value distribution of points along the x-axis.",
+                title: "Help",
+                trigger: "hover",
+                html: true,
+                placement: "auto right"
+            },
         },
         {
             accessor: 'showDistY',
             label: 'Show Y distr.',
-            type: 'toggle'
+            type: 'toggle',
+            help: {
+                content: "Show the y-value distribution of points along the y-axis.",
+                title: "Help",
+                trigger: "hover",
+                html: true,
+                placement: "auto right"
+            },
         },
-/*
-this option doesn't 
-seem to do anything
-        {
-            accessor: 'showLabels', 
-            label: 'Show labels',
-            type: 'toggle'
-        },
-*/
     ]
 }
