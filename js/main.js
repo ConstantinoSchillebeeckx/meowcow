@@ -101,10 +101,10 @@ var meowcow = (function() {
     var getFacetCurrentHeight = function() { return jQuery('#facet_0').height(); };
     var calcColWidth = function() { return jQuery('#' + _guiPanelID).width() / _numCols };
     var updateColWidth = function() { jQuery('.facet').css('width',calcColWidth()); }
-    var marginTop = function(d) { return d.plotSetup.marginTop[0]; }
-    var marginBottom = function(d) { return d.plotSetup.marginBottom[0]; }
-    var marginLeft = function(d) { return d.plotSetup.marginLeft[0]; }
-    var marginRight = function(d) { return d.plotSetup.marginRight[0]; }
+    var marginTop = function(d) { return d.plotFlourish.marginTop[0]; }
+    var marginBottom = function(d) { return d.plotFlourish.marginBottom[0]; }
+    var marginLeft = function(d) { return d.plotFlourish.marginLeft[0]; }
+    var marginRight = function(d) { return d.plotFlourish.marginRight[0]; }
 
 
      /**
@@ -311,16 +311,15 @@ var meowcow = (function() {
                 chart.height(getFacetAutoHeight());
             }
 
+            // set axis labels
+            formatAxisTitle(chart, _gui.colTypes(), formVals);
 
             if (chartUpdate) {
                 console.log(chart)
                 chart.update();
             } else {
                 // set title
-                formatChartTitle(sel, title, titleFontSize); 
-
-                // set axis labels
-                formatAxisTitle(chart, _gui.colTypes(), formVals.plotSetup.xLabel, formVals.plotSetup.yLabel);
+                formatChartTitle(sel, title); 
 
                 datum.call(chart);
             }
@@ -380,22 +379,25 @@ var meowcow = (function() {
      * @return void
      */
 
-    function formatAxisTitle(chart, colTypes, x, y) {
+    function formatAxisTitle(chart, colTypes, guiVals) {
 
-        if (x) {
-            if (colTypes[x] === 'float') {
-                chart.xAxis.tickFormat(d3.format('.02f'));
-            }
-            chart.showXAxis(true);
-            chart.xAxis.axisLabel(x);
+        var x = guiVals.plotSetup.x;
+        var y = guiVals.plotSetup.y;
+
+        if (colTypes[x] === 'float') {
+            var digits = guiVals.plotFlourish.xDigits != null ? guiVals.plotFlourish.xDigits : 2; // default to 2 digits
+            console.log(digits)
+            chart.xAxis.tickFormat(d3.format('.' + digits + 'f'));
         }
-        if (y) {
-            if (colTypes[y] === 'float') {
-                chart.yAxis.tickFormat(d3.format('.02f'));
-            }
-            chart.showYAxis(true);
-            chart.yAxis.axisLabel(y);
+        chart.showXAxis(true);
+        chart.xAxis.axisLabel(guiVals.plotFlourish.xLabel != null ? guiVals.plotFlourish.xLabel : x);
+
+        if (colTypes[y] === 'float') {
+            var digits = guiVals.plotFlourish.yDigits != null ? guiVals.plotFlourish.yDigits : 2; // default to 2 digits
+            chart.yAxis.tickFormat(d3.format('.' + digits + 'f'));
         }
+        chart.showYAxis(true);
+        chart.yAxis.axisLabel(guiVals.plotFlourish.yLabel != null ? guiVals.plotFlourish.yLabel : y);
 
     }
 
@@ -615,9 +617,13 @@ function displayWarning(message, selector=false, error=false) {
 
 function convertToNumber(str) {
 
-    var convert = str * 1;
+    if (str != null) {
+        var convert = str * 1;
 
-    return (isNaN(convert)) ? str : convert;
+        return (isNaN(convert)) ? str : convert;
+    } else {
+        return str;
+    }
 
 }
 

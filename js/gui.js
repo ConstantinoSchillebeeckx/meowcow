@@ -50,6 +50,7 @@ var GUI = (function() {
         _setupTab = 'plotSetup',         // ID for plot setup tab
         _facetsTab = 'plotFacets',       // ID for plot facets tab
         _optionsTab = 'plotOptions',     // ID for plot options tab
+        _flourishTab = 'plotFlourish',   // ID for plot flourishes tab
         _filtersTab = 'plotFilter',      // ID for plot filters tab
         _dataTab = 'plotData',           // ID for data setup tab
         _facetResetBtn = 'facetsBtn',    // ID for facet reset button
@@ -65,6 +66,7 @@ var GUI = (function() {
     _guiVals[_optionsTab] = {},
     _guiVals[_filtersTab] = {},
     _guiVals[_facetsTab] = {}
+    _guiVals[_flourishTab] = {}
     _guiVals0 = JSON.parse(JSON.stringify(_guiVals)) // deep copy
 
 
@@ -180,7 +182,7 @@ var GUI = (function() {
                 // parse selects and text input
                 selects.forEach(function(d) {
                     var value = (d.value == "") ? null : d.value;
-                    _guiVals[tab][d.name] = value;
+                    _guiVals[tab][d.name] = convertToNumber(value);
                 });
 
                 // parse checkboxes
@@ -912,10 +914,23 @@ var GUI = (function() {
             }
         });
 
+    }
+
+    /**
+     * Create a tab that details the setup
+     * for the axes and the titles
+     *
+     */
+    function makeFlourishesTab() {
+
+        // add tab and container
+        var note = 'Use the inputs below to ...<code>TODO</code>';
+        addTab(_flourishTab, 'Flourish', note);
+
         // these inputs are always present, no matter the plot type
         // e.g. axis title or margin
         if (d3.select('#'+_globalSetupInputsID).empty()) {
-            d3.select('#'+_setupTab).append('div')
+            d3.select('#'+_flourishTab).append('div')
                 .attr('class','col-sm-12')
                 .append('div')
                 .attr('class','row')
@@ -943,6 +958,8 @@ var GUI = (function() {
             generateFormTextInput(_globalSetupInputsID, {id:'chartTitle', label:'Chart title', type:'text', domClass: 'col-sm-3',});
             generateFormTextInput(_globalSetupInputsID, {id:'xLabel', label:'X-axis label', type:'text', domClass: 'col-sm-3',});
             generateFormTextInput(_globalSetupInputsID, {id:'yLabel', label:'Y-axis label', type:'text', domClass: 'col-sm-3',});
+            generateFormTextInput(_globalSetupInputsID, {id:'yDigits', label:'Y-axis digits', type:'number', domClass: 'col-sm-2',});
+            generateFormTextInput(_globalSetupInputsID, {id:'xDigits', label:'X-axis digits', type:'number', domClass: 'col-sm-2',});
 
         }
     }
@@ -1035,8 +1052,9 @@ var GUI = (function() {
             .attr('id','toUpdate')
 
         makeSetupTab();
-        makeFacetsTab();
+        makeFlourishesTab();
         makeOptionsTab();
+        makeFacetsTab();
         makeFiltersTab();
         makeDataTab();
         addClearFix(_optionsTab);
@@ -1346,6 +1364,7 @@ var GUI = (function() {
                 return false;
             }
             if (rowVal === colVal) {
+                console.log(rowVal, colVal)
                 displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", _warningsID, true);
                 return false;
             }
@@ -1758,19 +1777,35 @@ var GUI = (function() {
 
         // add popover
         if (typeof opts.help !== 'undefined') {
-
-            if (!('container' in opts.help)) opts.help.container = 'div#'+selector; // constrain popover to GUI if not specified
-
-            span.attr('data-toggle','popover')
-                .append('i')
-                .attr('class','fa fa-info-circle text-primary')
-                .attr('aria-hidden',true)
-                .style('margin-left','5px')
-            jQuery(span).popover(opts.help);
+            if (!('container' in opts)) opts.container = 'div#'+selector; // constrain popover to GUI if not specified
+            generateHelpPopover(opts.help, span);
         }
 
         return formGroup;
     }
+
+
+    /*
+     * Generate a bootstrap popover to server
+     * as a help tooltip to describe GUI element
+     *
+     * @param {obj} opts - option object to assign
+     *        to popover(), see
+     *        https://getbootstrap.com/docs/3.3/javascript/#popovers-usage
+     * @param {selection} sel - selection to which to
+     *        attach the popover
+     */
+    function generateHelpPopover(opts, sel) {
+
+            sel.attr('data-toggle','popover')
+                .append('i')
+                .attr('class','fa fa-info-circle text-primary')
+                .attr('aria-hidden',true)
+                .style('margin-left','5px')
+            jQuery(sel).popover(opts);
+
+    }
+
 
     /**
      * on click event handler to reset all filters to 'default'
