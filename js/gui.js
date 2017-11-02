@@ -1273,7 +1273,6 @@ var GUI = (function() {
         var style = "\n";
         for (var i=0; i<document.styleSheets.length; i++) {
             var sheet = document.styleSheets[i];
-            console.log(sheet);
             if (sheet.href && sheet.href.split('/').pop() === 'styles.css') {
                 var rules = sheet.rules;
                 if (rules) {
