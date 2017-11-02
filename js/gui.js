@@ -44,6 +44,7 @@ var GUI = (function() {
         _guiID = 'guiBody',              // ID to give to gui body
         _warningsID = 'warnings',        // ID to give to warnings DOM
         _renderBtnID = 'renderBtn',      // ID for render button
+        _saveBtnID = 'saveBtn',      // ID for save button
         _plotTypesID = 'plotTypes',      // ID for plot types tab
         _guiPanelID = 'guiPanel',
         _globalSetupInputsID = 'globalSetupInputs',
@@ -1229,17 +1230,75 @@ var GUI = (function() {
         form.append('hr')
 
         // submit button
-        form.append('div')
+        var footer = form.append('div')
             .attr('class','row')
-            .attr('id','plotRender')
             .append('div')
             .attr('class','col-sm-12')
-            .append('button')
+
+        footer.append('button')
             .attr('class','btn btn-primary pull-right')
             .attr('type','button')
             .text('Render')
             .attr('id',_renderBtnID)
             .on('click', preRender);
+
+        footer.append('button')
+            .attr('class','btn btn-success pull-right')
+            .attr('type','button')
+            .text('Save')
+            .attr('id',_saveBtnID)
+            .on('click', saveSVG);
+
+    }
+
+    /**
+     * Use fileSaver.js to save the SVG locally
+     * https://gist.github.com/wboykinm/e6e222d71e9b59e8b3053e0c4fe83daf
+     */
+    function saveSVG() {
+        try {
+            var isFileSaverSupported = !!new Blob();
+        } catch (e) {
+            alert("blob not supported");
+        }
+
+        /*
+        Will "bake-in" all the styles currently applied to
+        the SVG from an external style sheet directly into
+        the SVG through a pre-prended 'defs' section.
+
+        Function assumes all styles not already applied
+        directly to SVG are found in css/styles.css
+        */
+        var style = "\n";
+        for (var i=0; i<document.styleSheets.length; i++) {
+            var sheet = document.styleSheets[i];
+            console.log(sheet);
+            if (sheet.href && sheet.href.split('/').pop() === 'styles.css') {
+                var rules = sheet.rules;
+                if (rules) {
+                    for (var j=0; j<rules.length; j++) {
+                        style += (rules[j].cssText + '\n');
+                    }
+                }
+            }
+        }
+
+        // prepend style to svg
+        d3.select('svg')
+            .insert('defs',":first-child")
+            .append('style')
+            .attr('type','text/css')
+            .html(style);
+
+        var svg = d3.select("svg")
+            .attr("title", "test2")
+            .attr("version", 1.1)
+            .attr("xmlns", "http://www.w3.org/2000/svg")
+            .node().parentNode.innerHTML;
+
+        var blob = new Blob([svg], {type: "image/svg+xml"});
+        saveAs(blob, "myProfile.svg");
     }
 
 

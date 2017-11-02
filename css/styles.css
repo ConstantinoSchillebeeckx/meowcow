@@ -68,6 +68,10 @@ g.nv-distroplot {
     fill: #5C5C5C !important;
 }
 
+button.pull-right {
+    margin-left: 10px;
+}
+
 line.hover {
     stroke-width:4;
 }
