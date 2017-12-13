@@ -976,6 +976,7 @@ var GUI = (function() {
         var numShow = 20; // if column type is str, show this many number of possible values
 
         // add tab and container
+        note += '<div class="row"><div class="col-sm-12">';
         ['description','source','meta'].forEach(function(d) { 
             if (data[d]) {
                 note += '<dl class="dl-horizontal">';
@@ -983,14 +984,22 @@ var GUI = (function() {
                 note += ' <dd>' + data[d] + '</dd></dl>';
             }
         });
+        note += '</div></div>'
 
+        note += '<div class="row"><div class="col-sm-12">';
+        note += '<button class="btn btn-primary pull-right" type="button" id="downloadDataCSV">Download CSV</button>'
+        note += '<button class="btn btn-primary pull-right" type="button" id="downloadDataJSON">Download JSON</button>'
+        note += '</div></div>'
+        note += '<div class="row"><div class="col-sm-12">';
         note += 'The currently loaded data has the following attributes:';
+        note += '</div></div>'
         addTab(_dataTab, 'Data', note);
 
         var ol = d3.select('#'+_dataTab).append('div')
             .attr('class','col-sm-12')
             .append('ol')
 
+        // render details for each of the loaded columns
         Object.keys(colTypes).forEach(function(attrName) {
        
             var attrType = colTypes[attrName];
@@ -1029,6 +1038,13 @@ var GUI = (function() {
             ul.append('li')
                 .html(valText);
         })
+
+        // onclick event not working when hard-coded in button
+        // so i'm attaching it here, could be improved :( TODO
+        d3.select("#downloadDataCSV")
+            .on('click',function () { downloadDataset('csv')})
+        d3.select("#downloadDataJSON")
+            .on('click',function () { downloadDataset('json')})
 
     }
 
@@ -1153,7 +1169,7 @@ var GUI = (function() {
             tab.append('div')
                 .attr('class','col-sm-12 note')
                 .style('margin-bottom',0)
-                .append('p')
+                //.append('p')
                 .html(note);
         }
     }
@@ -1248,6 +1264,36 @@ var GUI = (function() {
             .text('Save')
             .attr('id',_saveBtnID)
             .on('click', saveSVG);
+
+    }
+
+
+    /**
+     * Function used to download currently loaded data to
+     * a JSON format for this app locally. Assumes that
+     * filesaver.js has been loaded.
+     *
+     * @param {str} format - type of format to download locally
+     *  must be either 'json' or 'csv'. Will default to 'csv'
+     *  if unspecified
+     */
+    function downloadDataset(format) {
+
+        try {
+            var isFileSaverSupported = !!new Blob();
+        } catch (e) {
+            alert("blob not supported");
+        }
+
+        if (typeof format === 'undefined') {
+            format = 'csv'
+        }
+
+        if (format === 'csv' || format === 'json') {
+            var textToSave = format == 'json' ? JSON.stringify(data.data,null,"\t") : d3.csv.format(data.data);
+            var blob = new Blob([textToSave], {type: "text/plain;charset=utf-8"});
+            saveAs(blob, format == 'json' ? 'data.json' : 'data.csv');
+        }
 
     }
 
