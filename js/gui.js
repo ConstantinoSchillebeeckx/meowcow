@@ -937,14 +937,14 @@ var GUI = (function() {
                 .attr('class','row')
                 .attr('id',_globalSetupInputsID)
                 
-            var sliderOptions = {range: {'min':0, 'max':100}, step:1, connect: [true, false]}
+            var sliderOptions = {range: {'min':10, 'max':200}, step:1, connect: [true, false]}
             var sliderFormat = function(d) { return '[' + Math.round(d) + ']' };
 
-            sliderOptions.start = 30;
+            sliderOptions.start = 75;
             var opts =  {id:'marginLeft', label:'Left margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 
-            sliderOptions.start = 5;
+            sliderOptions.start = 20;
             var opts =  {id:'marginRight', label:'Right margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 
@@ -952,7 +952,7 @@ var GUI = (function() {
             var opts =  {id:'marginTop', label:'Top margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 
-            sliderOptions.start = 40;
+            sliderOptions.start = 70;
             var opts =  {id:'marginBottom', label:'Bottom margin', domClass:'col-sm-3', options:sliderOptions, format:sliderFormat}
             generateFormSlider(_globalSetupInputsID, opts);
 

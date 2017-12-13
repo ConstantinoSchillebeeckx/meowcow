@@ -283,11 +283,12 @@ var meowcow = (function() {
 
 
             // set margin
+            var titleFontSize = 20;
             var margin = {
                 top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
                 right: marginRight(formVals), 
                 bottom: (marginBottom(formVals) < 60 && formVals.plotSetup.xLabel) ? 60 : marginBottom(formVals), 
-                left: (marginLeft(formVals) < 73 && formVals.plotSetup.yLabel) ? 73 : marginLeft(formVals), 
+                left: (marginLeft(formVals) < 100 && formVals.plotSetup.yLabel) ? 100 : marginLeft(formVals), 
             };
             chart.margin(margin);
             optsSet['margin'] = margin;
