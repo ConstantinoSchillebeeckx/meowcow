@@ -507,7 +507,7 @@ var GUI = (function() {
 
                     // clear modal body
                     var modalBody = d3.select('#modalBody')
-                    modalBody.html('');
+                    modalBody.text('');
                     jQuery('#uploadDone').remove();
 
                     if (errors.length) { // if there was an error parsing input file
@@ -515,11 +515,17 @@ var GUI = (function() {
                         jQuery('.modal-content').addClass('panel-danger');
  
                         // just grab first error for now
-                        var errorText = '<span class="text-danger fa fa-exclamation " aria-hidden="true"></span> ' + errors[0].message;
+                        var errorText = errors[0].message;
                         if (typeof errors[0].row !== 'undefined') errorText += " - error found in row " + errors[0].row;
-                        modalBody.append('h4')
+                        var h4 = modalBody.append('h4')
                             .attr('class','lead')
-                            .html(errorText)
+                        
+                        h4.append('span')
+                            .attr('class','text-danger fa fa-exclamation')
+                            .attr('aria-hidden',true)
+
+                        h4.append('span')
+                            .text(errorText)
                     } else { // parsed input file is ok
 
                         jQuery('.modal-content').removeClass('panel-danger').addClass('panel-info');
@@ -532,7 +538,7 @@ var GUI = (function() {
             before: function(file, inputElem) {
                 // show spinner
                 var modalBody = d3.select('#modalBody')
-                modalBody.html(''); // clear content
+                modalBody.text(''); // clear content
 
                 // ensure proper file type
                 var allowFileType = ['csv','txt','tsv'];
@@ -542,11 +548,15 @@ var GUI = (function() {
 
                     jQuery('.modal-content').addClass('panel-danger');
 
-                    var errorText = '<span class="text-danger fa fa-exclamation " aria-hidden="true"></span> ';
-                    errorText += 'File must be plain text have one of the following extensions: ' + allowFileType.join(", ");
-                    modalBody.append('h4')
+                    var h4 = modalBody.append('h4')
                         .attr('class','lead')
-                        .html(errorText)
+                    
+                    h4.append('span')
+                        .attr('class','text-danger fa fa-exclamation')
+                        .attr('aria-hidden',true)
+
+                    h4.append('span')
+                        .text(' File must be plain text have one of the following extensions: ' + allowFileType.join(", "))
 
                     return {action: "abort"};
 
@@ -621,7 +631,7 @@ var GUI = (function() {
             if (config.useToyData) {
                     
                 btnRow.append('h4')
-                    .html('Datasets:')
+                    .text('Datasets:')
 
                 Object.keys(toyData).forEach(function(d) {
 
@@ -838,7 +848,9 @@ var GUI = (function() {
 
             var formGroup = d3.select('#'+_optionsTab).append('div')
                 .attr('class', 'form-group col-sm-12')
-                .html('No plot options were specified for the plot type <code>' + getPlotType() + '</code>.')
+                .text('No plot options were specified for the plot type ')
+                .append('code')
+                .text(getPlotType())
 
         }
 
@@ -1013,13 +1025,14 @@ var GUI = (function() {
         var ol = d3.select('#'+_dataTab).append('div')
             .attr('class','col-sm-12')
             .append('ol')
+            .attr('class','dataFields')
+
 
         // render details for each of the loaded columns
         Object.keys(colTypes).forEach(function(attrName) {
        
             var attrType = colTypes[attrName];
 
-            var typeText = 'type: <code>' + attrType + '</code> ';
             var valText = '';
             var colVals = _unique[attrName];
             var colDescription;
@@ -1027,31 +1040,46 @@ var GUI = (function() {
                 colDescription = data.colDescription[attrName]; 
             }
 
-            if (attrType == 'int' || attrType == 'float') {
-                valText = 'range: [' + d3.extent(colVals) + ']';
-            } else if (attrType == 'str') {
-                valText = 'values: <mark>';
-                if (colVals.length > numShow) {
-                    valText += colVals.slice(0, numShow).join(', ') + ' ...</mark>';
-                } else {
-                    valText += colVals.join(', ') + '</mark>';
-                }
-            } else if (attrType == 'datetime' || attrType == 'date') { 
-                valText = '<kbd>' + _unique[attrName][_unique[attrName].length - 1] + '</kbd> to <kbd>' + _unique[attrName][0] + '</kbd>';
-            }
-
             var ul = ol.append('li')
-                .html('<b>' + attrName + '</b>')
+                .text(attrName)
                 .append('ul')
 
             if (colDescription) {
                 ul.append('li')
-                    .html(colDescription);
+                    .text(colDescription);
             }
+
             ul.append('li')
-                .html(typeText);
-            ul.append('li')
-                .html(valText);
+                .text('Type: ')
+                .append('code')
+                .text(attrType);
+
+            if (attrType == 'int' || attrType == 'float') {
+                ul.append('li')
+                    .text('range: [' + d3.extent(colVals) + ']');
+            } else if (attrType == 'str') {
+                valText = 'values: <mark>';
+                if (colVals.length > numShow) {
+                    ul.append('li')
+                        .text('values: ')
+                        .append('mark')
+                        .text(colVals.slice(0, numShow).join(', ') + ' ...')
+                } else {
+                    ul.append('li')
+                        .text('values: ')
+                        .append('mark')
+                        .text(colVals.join(', '))
+                }
+            } else if (attrType == 'datetime' || attrType == 'date') { 
+                var li = ul.append('li')
+                    li.append('kbd')
+                        .text(_unique[attrName][0])
+                    li.append('span')
+                        .text(' to ')
+                    li.append('kbd')
+                        .text(_unique[attrName][_unique[attrName].length - 1])
+            }
+
         })
 
         // onclick event not working when hard-coded in button
@@ -1151,7 +1179,7 @@ var GUI = (function() {
      * @param {str} id - ID to give to tab-content tab, this
      *  will also set the .nav li element with an id of
      *  id + 'Tab'
-     * @param {str} text - label text for tab, html allowed
+     * @param {str} text - label text for tab
      * @param {str} note - descriptive text explaining tab,
      *   html allowed
      * @param {bool} active - whether to give the tabpanel 
@@ -1172,7 +1200,7 @@ var GUI = (function() {
             .attr('role','tab')
             .attr('data-toggle','tab')
             .attr('href','#'+id)
-            .html(text)
+            .text(text)
 
         var tab = d3.select('.tab-content').append('div')
             .attr('role','tabpanel')
@@ -1184,7 +1212,6 @@ var GUI = (function() {
             tab.append('div')
                 .attr('class','col-sm-12 note')
                 .style('margin-bottom',0)
-                //.append('p')
                 .html(note);
         }
     }
@@ -1892,7 +1919,7 @@ var GUI = (function() {
         
         span.append('label')
             .attr('for',opts.accessor)
-            .html(opts.label)
+            .text(opts.label)
 
         // add popover
         if (typeof opts.help !== 'undefined') {
