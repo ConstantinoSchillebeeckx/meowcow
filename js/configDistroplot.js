@@ -1,6 +1,6 @@
 var distroPlotCofig = {
     label: 'Distribution',
-    allowFacets: true,
+    allowFacets: false,
     parseData: false,
     axes: [
         {
@@ -59,7 +59,8 @@ var distroPlotCofig = {
             accessor: 'centralTendency',
             label: 'Middle line',
             type: 'select',
-            values: {Mean: 'mean', Median: 'median', None: false}
+            values: {Mean: 'mean', Median: 'median', None: false},
+            setDefault: 'median'
         }, {
             accessor: 'jitter',
             label: 'Point jitter',
@@ -126,7 +127,17 @@ var distroPlotCofig = {
                 off: 'No',
             },
             setDefault: true,
-            domClass: 'col-sm-3',
+            domClass: 'col-sm-2',
+        }, {
+            accessor: 'clampViolin',
+            label: 'Clamp violin',
+            type: 'toggle',
+            options: {
+                on: 'Yes',
+                off: 'No',
+            },
+            setDefault: true,
+            domClass: 'col-sm-2',
         }
     ]
 }

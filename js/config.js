@@ -8,4 +8,10 @@ var guiSetup = {
         lineChart: lineConfig,
         distroPlotChart: distroPlotCofig,
     },
+    showSetupTab: true,
+    showFlourishTab: true,
+    showOptionsTab: true,
+    showFacetsTab: false,
+    showFiltersTab: true,
+    showDataTab: true
 }

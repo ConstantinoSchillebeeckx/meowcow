@@ -70,7 +70,6 @@ var GUI = (function() {
     _guiVals[_flourishTab] = {}
     _guiVals0 = JSON.parse(JSON.stringify(_guiVals)) // deep copy
 
-
     //============================================================
     // Public getters & setters
     //------------------------------------------------------------    
@@ -676,8 +675,24 @@ var GUI = (function() {
      * it will update all the setup tab and the options tab
      */
     function plotTypeChange() {
-        makeSetupTab();
-        makeOptionsTab();
+        if (config.showSetupTab) makeSetupTab();
+        if (config.showOptionsTab) makeOptionsTab();
+
+        // individual plot types can turn off the 
+        // facet features, so check for that here
+        if (getAllowFacets() === false) {
+            disableTab(_facetsTab);
+        } else {
+            d3.select('#' + _facetsTab).selectAll('*').attr('disabled',null) // enable everything
+        }
+    }
+
+    /**
+     * Disable a given tab by giving all the elements
+     * inside of it the disabled attribute.
+     */
+    function disableTab(tabID) {
+        d3.select('#' + tabID).selectAll('*').attr('disabled','disabled')
     }
 
     /**
@@ -878,7 +893,7 @@ var GUI = (function() {
                 .on('click', function() { resetInputs(_facetsTab, _facetResetBtn)} )
                 .text('Reset facets');
         } else {
-            d3.select(_facetsTab).style('display','hidden');
+            disableTab(_facetsTab);
         }
     }
 
@@ -925,7 +940,7 @@ var GUI = (function() {
     function makeFlourishesTab() {
 
         // add tab and container
-        var note = 'Use the inputs below to ...<code>TODO</code>';
+        var note = 'Use the inputs below to adjust margins, add axis labels and adjust the number of significant digits on each axis.';
         addTab(_flourishTab, 'Flourish', note);
 
         // these inputs are always present, no matter the plot type
@@ -1068,12 +1083,12 @@ var GUI = (function() {
             .attr('class','row')
             .attr('id','toUpdate')
 
-        makeSetupTab();
-        makeFlourishesTab();
-        makeOptionsTab();
-        makeFacetsTab();
-        makeFiltersTab();
-        makeDataTab();
+        if (config.showSetupTab) makeSetupTab();
+        if (config.showFlourishTab) makeFlourishesTab();
+        if (config.showOptionsTab) makeOptionsTab();
+        if (config.showFacetsTab) makeFacetsTab();
+        if (config.showFiltersTab) makeFiltersTab();
+        if (config.showDataTab) makeDataTab();
         addClearFix(_optionsTab);
         jQuery("#" + _setupTab + 'Tab a').tab('show'); // show setup tab
 

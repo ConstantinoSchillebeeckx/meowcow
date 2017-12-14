@@ -106,6 +106,7 @@ This configuration file sets all the proper options for both the GUI and each of
 Each of the keys in this entry will populate the plot type select input located in the setup tab of the GUI. The keys for this object defines a particular plot type and must be available as a model in NVD3; the value for an entry in this object is also an object and must have the following entries:
 
 - **allowFacets** - bool, whether to allow faceting of data for this plot type - OPTIONAL, default true
+- **parseData** - TODO
 - **label** -str, label to use in select option for this plot type; if not provided, plot type key will be used - OPTIONAL
 - **axes** - list of objects, bind the proper data attribute to the plot's primary axes - REQUIRED
 - **options** - list of objects, customization options for plot type
