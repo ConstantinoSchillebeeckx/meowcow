@@ -13,5 +13,16 @@ var guiSetup = {
     showOptionsTab: true,
     showFacetsTab: true,
     showFiltersTab: true,
-    showDataTab: true
+    showDataTab: true,
+    init: {
+        plotSetup: {},
+        plotFilter: {},
+        plotFlourish: {},
+        plotOptions: {},
+        plotSetup: {
+            plotTypes: "distroPlotChart",
+            x: "Study",
+            y: "Weight",
+        }
+    }
 }

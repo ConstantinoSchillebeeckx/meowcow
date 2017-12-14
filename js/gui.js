@@ -115,6 +115,13 @@ var GUI = (function() {
             populateGUI();
         }
 
+        // if initializing plot with config, set those
+        // options in the gui now
+        if ('init' in config) {
+            setGUIvals(config.init);
+            //preRender(); // 
+        }
+
         return this;
     }
     this.facetOptionsHaveChanged = function() {
@@ -255,6 +262,27 @@ var GUI = (function() {
 
         return _guiVals;
 
+    }
+
+    /**
+     * Function to preload settings in
+     * the GUI, this is helpful for
+     * generating an initial render
+     * of the plot on page load
+     *
+     * @param (obj) guiOptions - gui options to set,
+     *    same format as the output of getGUIvals().
+     */
+    function setGUIvals(guiOptions) {
+        for (var tab in guiOptions) {
+            var tabOptions = guiOptions[tab]
+        
+            // TODO - i've only coded things to work with selects,
+            // need to code other thigns like text input, toggle, etc    
+            for (var opt in tabOptions) {
+               jQuery('#'+opt).selectpicker('val',tabOptions[opt]) 
+            }
+        }
     }
 
 
@@ -865,46 +893,45 @@ var GUI = (function() {
      */
     function makeFacetsTab() {
 
-        if (getAllowFacets()) {
+        // add tab and container
+        var note = 'Facets form a matrix of panels defined by row and column facetting variables; it is used to draw plots';
+        note += ' with multiple axes where each axes shows the same relationship conditioned on different levels of some variable.';
+        addTab(_facetsTab, 'Facets', note);
 
-            // add tab and container
-            var note = 'Facets form a matrix of panels defined by row and column facetting variables; it is used to draw plots';
-            note += ' with multiple axes where each axes shows the same relationship conditioned on different levels of some variable.';
-            addTab(_facetsTab, 'Facets', note);
+        ['col','row'].forEach(function(d) {
+            var cols = getColsByType('ordinal');
+            var opts = {domClass: 'col-sm-3', values:cols, id:d+'-facet', label:(d == 'col') ? 'Columns' : 'Rows', addOption:{'None':''}}
+            var select = generateFormSelect(_facetsTab, opts);
+            select.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
+        });
 
-            ['col','row'].forEach(function(d) {
-                var cols = getColsByType('ordinal');
-                var opts = {domClass: 'col-sm-3', values:cols, id:d+'-facet', label:(d == 'col') ? 'Columns' : 'Rows', addOption:{'None':''}}
-                var select = generateFormSelect(_facetsTab, opts);
-                select.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
-            });
+        var input = generateFormTextInput(_facetsTab, {id:'colWrap', label:'Column wrap', type:'number', domClass: 'col-sm-3',});
+        input.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
 
-            var input = generateFormTextInput(_facetsTab, {id:'colWrap', label:'Column wrap', type:'number', domClass: 'col-sm-3',});
-            input.on('change',function() { showButton(_facetResetBtn) }); // activate reset button
+        var opts = {
+            options: {start: 100, range: {'min':100, 'max':500}, step:1, connect: [true, false]},
+            format: function(d) { return '[' + parseInt(d) + 'px]' },
+            id:_minRowHeight, label:'Min row height', minValueReplace: 'Auto', showValueReplace: true,
+            domClass: 'col-sm-3',
+        }
+        var slider = generateFormSlider(_facetsTab, opts);
+        slider.noUiSlider.on('start',function() { showButton(_facetResetBtn) }); // activate reset button
 
-            var opts = {
-                options: {start: 100, range: {'min':100, 'max':500}, step:1, connect: [true, false]},
-                format: function(d) { return '[' + parseInt(d) + 'px]' },
-                id:_minRowHeight, label:'Min row height', minValueReplace: 'Auto', showValueReplace: true,
-                domClass: 'col-sm-3',
-            }
-            var slider = generateFormSlider(_facetsTab, opts);
-            slider.noUiSlider.on('start',function() { showButton(_facetResetBtn) }); // activate reset button
+        // reset button
+        // initially hide it
+        d3.select('#'+_facetsTab)
+            .append('div')
+            .attr('class','note col-sm-2 col-sm-offset-10')
+            .style('margin-bottom',0)
+            .append('button')
+            .attr('id',_facetResetBtn)
+            .attr('class','btn btn-warning btn-xs pull-right')
+            .attr('disabled','disabled')
+            .style('display','none')
+            .on('click', function() { resetInputs(_facetsTab, _facetResetBtn)} )
+            .text('Reset facets');
 
-            // reset button
-            // initially hide it
-            d3.select('#'+_facetsTab)
-                .append('div')
-                .attr('class','note col-sm-2 col-sm-offset-10')
-                .style('margin-bottom',0)
-                .append('button')
-                .attr('id',_facetResetBtn)
-                .attr('class','btn btn-warning btn-xs pull-right')
-                .attr('disabled','disabled')
-                .style('display','none')
-                .on('click', function() { resetInputs(_facetsTab, _facetResetBtn)} )
-                .text('Reset facets');
-        } else {
+        if (getAllowFacets() === false) {
             disableTab(_facetsTab);
         }
     }
@@ -1101,8 +1128,14 @@ var GUI = (function() {
         var note = 'Choose the type of plot to be rendered along with the proper data for each axis.';
         addTab(_setupTab, 'Setup', note, true);
 
+        var opts = {values:getPlotTypes(), id:_plotTypesID, label:"Plot type", domClass:"col-sm-2"};
+      
+        // set the selected plot type if given in config init 
+        if (typeof config.init.plotSetup.plotTypes !== 'undefined') { 
+            opts.setDefault = config.init.plotSetup.plotTypes
+        }
 
-        var select = generateFormSelect(_setupTab, {values:getPlotTypes(), id:_plotTypesID, label:"Plot type", domClass:"col-sm-2"})
+        var select = generateFormSelect(_setupTab, opts)
         select.on('change', plotTypeChange);
 
         d3.select('#'+_setupTab).append('div')
