@@ -1358,7 +1358,7 @@ var GUI = (function() {
             .node().parentNode.innerHTML;
 
         var blob = new Blob([svg], {type: "image/svg+xml"});
-        saveAs(blob, "myProfile.svg");
+        saveAs(blob, "plot.svg");
     }
 
 

@@ -123,6 +123,7 @@ var meowcow = (function() {
         //jQuery('.collapse').collapse() // collapse GUI
 
         var guiVals = _gui.getGUIvals();
+        var title = guiVals.plotFlourish.chartTitle;
 
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
@@ -153,7 +154,6 @@ var meowcow = (function() {
 
                 if (typeof facetDat !== 'undefined') {
 
-                    var title = guiVals.plotSetup.chartTitle
                     if (_facetVals.facetOn) {
                         if (_hVal && _vVal) {
                             title = _vVal + ' = ' + rowName + ' | ' + _hVal + ' = ' + colName;
@@ -319,11 +319,11 @@ var meowcow = (function() {
                 console.log(chart)
                 chart.update();
             } else {
-                // set title
-                formatChartTitle(sel, title); 
 
                 datum.call(chart);
             }
+                // set title
+                formatChartTitle(sel, title); 
 
             nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
@@ -349,8 +349,10 @@ var meowcow = (function() {
      */
     function formatChartTitle(sel, title, fontSize) {
    
-        //console.log(title) 
-        if (title) {
+        if (title && (d3.select('.chartTitle').empty() || d3.select('.chartTitle text').text() !== title)) {
+
+            // remove previous title if updating text
+            if (d3.select('.chartTitle').empty() === false) d3.select('.chartTitle').remove();
 
             if (typeof fontSize === 'undefined') fontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
 
@@ -387,7 +389,6 @@ var meowcow = (function() {
 
         if (colTypes[x] === 'float') {
             var digits = guiVals.plotFlourish.xDigits != null ? guiVals.plotFlourish.xDigits : 2; // default to 2 digits
-            console.log(digits)
             chart.xAxis.tickFormat(d3.format('.' + digits + 'f'));
         }
         chart.showXAxis(true);

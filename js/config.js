@@ -11,7 +11,7 @@ var guiSetup = {
     showSetupTab: true,
     showFlourishTab: true,
     showOptionsTab: true,
-    showFacetsTab: false,
+    showFacetsTab: true,
     showFiltersTab: true,
     showDataTab: true
 }
