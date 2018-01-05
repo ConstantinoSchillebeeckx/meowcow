@@ -21,8 +21,8 @@ var guiSetup = {
         plotOptions: {},
         plotSetup: {
             plotTypes: "distroPlotChart",
-            x: "Study",
-            y: "Weight",
+            //x: "Study",
+            //y: "Weight",
         }
     }
 }

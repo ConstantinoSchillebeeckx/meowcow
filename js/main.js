@@ -270,7 +270,6 @@ var meowcow = (function() {
                     optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
 
                     if (!chartUpdate || optionValue !== chart[optionName]()) { // only update those options that have changed
-                        //console.log(optionName, optionValue);
                         chart[optionName](optionValue)
                     }
 
@@ -293,8 +292,6 @@ var meowcow = (function() {
 
             console.log(formVals)
 
-            console.log(dat);
-
             // adjust height of all rows if min row height has changed
             var rowHeight = getFacetMinHeight(formVals); // will be false if slider set to 'Auto'
             if (rowHeight != getFacetCurrentHeight() && rowHeight) {
@@ -306,7 +303,7 @@ var meowcow = (function() {
             }
 
             // set axis labels
-            formatAxisTitle(chart, _gui.colTypes(), formVals);
+            formatAxisLabels(chart, _gui.colTypes(), formVals);
 
             // set title
             formatChartTitle(sel, title); 
@@ -374,29 +371,36 @@ var meowcow = (function() {
      * @param {obj} colTypes - column type of each column
      *              of the input data. e.g. float, str
      * @param {str} x - label for x-axis
-     * @param {str} y - label for y-ayis
+     * @param {str} y - label for y-axis
+     * @param {int} fontSize - font size for axis ticks, default 10
      *
      * @return void
      */
 
-    function formatAxisTitle(chart, colTypes, guiVals) {
+    function formatAxisLabels(chart, colTypes, guiVals, fontSize) {
 
         var x = guiVals.plotSetup.x;
         var y = guiVals.plotSetup.y;
+
+        if (typeof fontSize === 'undefined') fontSize = 10;
 
         if (colTypes[x] === 'float') {
             var digits = guiVals.plotFlourish.xDigits != null ? guiVals.plotFlourish.xDigits : 2; // default to 2 digits
             chart.xAxis.tickFormat(d3.format('.' + digits + 'f'));
         }
         chart.showXAxis(true);
-        chart.xAxis.axisLabel(guiVals.plotFlourish.xLabel != null ? guiVals.plotFlourish.xLabel : x);
+        chart.xAxis
+            .axisLabel(guiVals.plotFlourish.xLabel != null ? guiVals.plotFlourish.xLabel : x)
+            .fontSize(fontSize);
 
         if (colTypes[y] === 'float') {
             var digits = guiVals.plotFlourish.yDigits != null ? guiVals.plotFlourish.yDigits : 2; // default to 2 digits
             chart.yAxis.tickFormat(d3.format('.' + digits + 'f'));
         }
         chart.showYAxis(true);
-        chart.yAxis.axisLabel(guiVals.plotFlourish.yLabel != null ? guiVals.plotFlourish.yLabel : y);
+        chart.yAxis
+            .axisLabel(guiVals.plotFlourish.yLabel != null ? guiVals.plotFlourish.yLabel : y)
+            .fontSize(fontSize);
 
     }
 
