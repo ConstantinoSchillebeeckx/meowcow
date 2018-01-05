@@ -1402,6 +1402,14 @@ var GUI = (function() {
      * https://gist.github.com/wboykinm/e6e222d71e9b59e8b3053e0c4fe83daf
      */
     function saveSVG() {
+
+        // check whether an image exists, if not, show an error
+        if (d3.select('svg').empty()) {
+            displayWarning("There is no chart to save, please render one first", _warningsID, true);
+            return;
+        }
+        
+
         try {
             var isFileSaverSupported = !!new Blob();
         } catch (e) {

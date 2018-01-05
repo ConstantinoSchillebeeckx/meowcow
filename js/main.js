@@ -16,7 +16,7 @@ var meowcow = (function() {
         config = {},        // config details for plots
         data = false,       // data to plot
         colTypes = {},      // overwrite column types with these
-        ignoreCol = false   // columns to ignore in data
+        ignoreCol = []   // columns to ignore in data
 
 
     //============================================================
@@ -73,6 +73,7 @@ var meowcow = (function() {
         // build DOM wraps for GUI and plot area
         if (jQuery('#'+_guiWrap).length == 0) d3.select(container).append('div').attr('id',_guiWrap).attr('class','row')
         if (jQuery('#'+_canvasWrap).length == 0) d3.select(container).append('div').attr('id',_canvasWrap)
+
 
         // build gui
         _gui = GUI()
