@@ -29,8 +29,6 @@ var meowcow = (function() {
         _chartArray=[],         // contains any renderd NVD3 chart objects
         _minRowHeight = 'minRowHeight',  // facet min row height slider ID
         _facets,
-        _facetRows,
-        _facetCols,
         _facetVals,
         _hVal,
         _vVal,
@@ -39,6 +37,8 @@ var meowcow = (function() {
         _warningsID = 'warnings',
         _guiPanelID = 'guiPanel',
         _aspectRatio = 2.0; // width to height ratio of facets
+        _optsSet = {}; // settings chosen in Setup tab, used as a cache
+        _facetDat = []; // array of datasets for each facet
     
 
 
@@ -83,7 +83,6 @@ var meowcow = (function() {
             .ignoreCol(ignoreCol)
             .formSubmit(renderPlot)
             .init();
-
   
         return this; 
     }
@@ -130,14 +129,8 @@ var meowcow = (function() {
         // of if the filtering is changed
         if (_gui.facetOptionsHaveChanged() || _gui.filterOptionsHaveChanged() || _gui.plotTypeHasChanged()) { 
 
-            if (_gui.facetOptionsHaveChanged() || _gui.plotTypeHasChanged()) jQuery(canvas).empty();  // clear out facets if facet options changed
+            jQuery(canvas).empty(); 
             _facets = setupFacetGrid(guiVals, _gui.data());
-
-
-            // generate facets and group data
-            _facetRows = Object.keys(_facets);
-            _facetCols = Object.keys(_facets[_facetRows[0]]);
-
             _facetVals = guiVals.plotFacets;
             _hVal = getFacetCol(guiVals)
             _vVal = getFacetRow(guiVals);
@@ -147,12 +140,20 @@ var meowcow = (function() {
 
         // draw plot in each facet
         var chartCount = 0;
-        _facetRows.forEach(function(rowName,i) {
-            _facetCols.forEach(function(colName,j) {
+        for (let i=0; i<_numRows; i++) {
+            for (let j=0; j<_numCols; j++) {
 
-                var facetDat = _facets[rowName][colName];
+                var rowName = Object.keys(_facets)[i];
+                var colName = Object.keys(_facets[rowName])[j];
+                var dat = _facets[rowName][colName];
 
-                if (typeof facetDat !== 'undefined') {
+                // parse data if needed before plotting
+                var parseFunc = guiVals.parseData;
+                if (typeof parseFunc === "function") {
+                    dat = parseFunc(dat); // TODO ?
+                }
+
+                if (typeof dat !== 'undefined') {
 
                     if (_facetVals.facetOn) {
                         if (_hVal && _vVal) {
@@ -163,14 +164,12 @@ var meowcow = (function() {
                     }
 
                     // draw plot
-                    populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
+                    populateChart(dat, '#facet_'+chartCount, guiVals, title, chartCount);
+                    chartCount += 1;
                 }
-                chartCount += 1;
-            });
+            }
 
-            // update list of columns for new row
-            if (_facetRows.length > 1 && (i+1) < _facetRows.length) _facetCols = Object.keys(_facets[_facetRows[i+1]]);
-        })
+        }
 
         
         jQuery('#'+_renderBtn).html('Update').prop('disabled', false); // TODO wait until everything finishes rendering ... async!
@@ -185,10 +184,10 @@ var meowcow = (function() {
      * render the plot.
      *
      * @param {obj} dat - data for each facet
-     * @param {string} sel - selector for facet into which to render plot
+     * @param {string} sel - id for facet into which to render plot
      * @param {obj} formVals - GUI option values
      * @param {string} title - [optional] title for plot, should be null if no title
-     * @param {int} chartCount - chart facet number to update/plot, is used to updated
+     * @param {int} chartCount - chart facet number to update/plot, is used to update
      *   the _chartArray plot store.
      *
      * @return void
@@ -201,18 +200,11 @@ var meowcow = (function() {
         // nvd3 expects SVG to exist already
         d3.select(sel + ' svg');
 
-        // parse data if needed before plotting
-        var datReady = dat;
-        var parseFunc = plotOptions.parseData;
-        if (typeof parseFunc === "function") {
-            datReady = parseFunc(dat); // TODO ?
-        }
 
         // create the chart
         var chart;
         var chartUpdate = false; // whether the chart should be updated
         nv.addGraph(function() {
-            console.log('Rendering ' + plotType);
     
             // load previous chart if:
             // - it exists (and)
@@ -221,15 +213,15 @@ var meowcow = (function() {
             if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged() && !_gui.plotTypeHasChanged()) {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
-                console.log('loading previous chart')
+                console.log('Updating ' + plotType + ' #' + chartCount);
             } else {
+                console.log('Rendering ' + plotType + ' #' + chartCount);
                 chart = nv.models[plotType]();
             }
 
             // setup data accessors for each axis
             // we will need the name of the accessor function to be called on the chart
             // as well as the actual accessor function (which is defined by the GUI)
-            var optsSet = {};
             Object.keys(plotOptions.axes).every(function(axis) {
                 var d = plotOptions.axes[axis];
                 var accessorName = d.accessor;
@@ -241,13 +233,16 @@ var meowcow = (function() {
                     return false;
                 }
 
-                if (accessorName) {
-                    optsSet[accessorName] = accessorAttr;
+                if ((accessorName && !chartUpdate) || accessorAttr !== _optsSet[chartCount][accessorName]) {
+                    console.log(chart[accessorName], accessorAttr)
                     if (accessorAttr) {
                         chart[accessorName](function(e) { return e[accessorAttr] });
                     } else {
                         chart[accessorName](accessorAttr);
                     }
+                    if (!(chartCount in _optsSet)) _optsSet[chartCount] = {}
+
+                    _optsSet[chartCount][accessorName] = accessorAttr
                 }
 
                 return true; // since we're looping with a [].every()
@@ -272,10 +267,11 @@ var meowcow = (function() {
 
                     // convert bool string into bool
                     optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
-                    console.log(optionValue, optionName);
 
-                    chart[optionName](optionValue)
-                    optsSet[optionName] = optionValue;
+                    if (!chartUpdate || optionValue !== chart[optionName]()) { // only update those options that have changed
+                        //console.log(optionName, optionValue);
+                        chart[optionName](optionValue)
+                    }
 
                     return true; // since we're looping with a [].every()
                 })
@@ -291,16 +287,12 @@ var meowcow = (function() {
                 left: (marginLeft(formVals) < 100 && formVals.plotSetup.yLabel) ? 100 : marginLeft(formVals), 
             };
             chart.margin(margin);
-            optsSet['margin'] = margin;
 
             // TODO if automatically adding margin space due to axis labels, update the GUI slider
 
-            console.log(optsSet)
             console.log(formVals)
 
-
-            var datum = d3.select(sel + ' svg')
-                            .datum(datReady)
+            console.log(dat);
 
             // adjust height of all rows if min row height has changed
             var rowHeight = getFacetMinHeight(formVals); // will be false if slider set to 'Auto'
@@ -315,15 +307,17 @@ var meowcow = (function() {
             // set axis labels
             formatAxisTitle(chart, _gui.colTypes(), formVals);
 
+            // set title
+            formatChartTitle(sel, title); 
+
             if (chartUpdate) {
-                console.log(chart)
                 chart.update();
             } else {
-
-                datum.call(chart);
+                d3.select(sel + ' svg')
+                    .datum(dat)
+                    .call(chart);
             }
-                // set title
-                formatChartTitle(sel, title); 
+
 
             nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
@@ -339,7 +333,7 @@ var meowcow = (function() {
      * which acts as a chart title; it will 
      * be centered on the chart
      *
-     * @param {str} sel - chart selector
+     * @param {string} sel - id for facet into which to render plot
      * @param {str} title - title to append to chart
      * @param {int, optional} fontSize - font size to style title with
      *        if not provided, will be calculatd automatically based
@@ -348,17 +342,19 @@ var meowcow = (function() {
      * @return void
      */
     function formatChartTitle(sel, title, fontSize) {
+
+        var svg = d3.select(sel + ' svg');
    
-        if (title && (d3.select('.chartTitle').empty() || d3.select('.chartTitle text').text() !== title)) {
+        if (title && (svg.select('.chartTitle').empty() || svg.select('.chartTitle text').text() !== title)) {
 
             // remove previous title if updating text
-            if (d3.select('.chartTitle').empty() === false) d3.select('.chartTitle').remove();
+            if (svg.select('.chartTitle').empty() === false) svg.select('.chartTitle').remove();
 
             if (typeof fontSize === 'undefined') fontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
 
             var facetWidth = jQuery(sel).width();
 
-            d3.select(sel + ' svg').append('g')
+            svg.append('g')
                 .attr('class','chartTitle')
                 .attr('transform', function(d) { return 'translate('+ facetWidth/2 +','+ fontSize + ')'; })
                 .append('text')
@@ -431,6 +427,7 @@ var meowcow = (function() {
      */
     function setupFacetGrid(guiVals, dat) {
 
+
         var colDat, colWrap, plotDom;
         var rowDat = ['row0'];
         var colDat = ['col0'];
@@ -439,6 +436,7 @@ var meowcow = (function() {
         var plotDom = d3.select('#' + _canvasWrap);
         var facetVals = guiVals.plotFacets;
         var minRowHeight = getFacetMinHeight(guiVals);
+        _chartArray = []; // reset in case data gets filtered
 
         if (facetVals.facetOn) {  // if plotting with facets
             var hVal = getFacetCol(guiVals);

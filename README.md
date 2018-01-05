@@ -12,7 +12,6 @@ Quickly visualize multi-dimensional data through various charting types such as:
 
 - docs
 - readme
-- handle missing data - added a 'missing' option in config
 - help modal for each plot type showing an example SVG - should make this a config option too
 - plot options for line plot: isArea, defined; data options: area, classed, 
 - save svg button
@@ -98,7 +97,7 @@ This configuration file sets all the proper options for both the GUI and each of
 #### Main (outer level)
 
 - **useToyData** - bool, whether to provide use option to select from several toy datasets from the file upload modal in cases where the `.data()` attribute hasn't been specified. OPTIONAL, default false
-- **missing** - str, datum to treat as missing from loaded dataset, e.g. 'NA'. OPTIONAL, default "" (empty string)
+- **missing** - list, datum to treat as missing from loaded dataset, e.g. 'NA'. OPTIONAL, default "" (empty string)
 - **plotTypes** - object, the available plot types to provide select for in GUI; object keys are plot type name and must be an available model in NVD3, object values are formatted as an object and specify the configuration for each plot type.
 
 #### plotTypes

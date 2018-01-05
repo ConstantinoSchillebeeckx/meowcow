@@ -142,6 +142,14 @@ var GUI = (function() {
     this.plotTypeHasChanged = function() {
         return _guiVals0[_setupTab].plotTypes != _guiVals[_setupTab].plotTypes;
     }
+    this.setupOptionsHaveChanged = function() {
+        // return true if any options in the "Setup" tab have changed
+        var haveChanged = false;
+        Object.keys(_guiVals[_setupTab]).forEach(function(d) {
+            if (_guiVals[_setupTab][d] !== _guiVals0[_setupTab][d] && !haveChanged) haveChanged = true;
+        })
+        return haveChanged;
+    }
     this.getGUIvals = function() { return _guiVals };
 
 
@@ -339,13 +347,29 @@ var GUI = (function() {
      */
     function getDatType(mixedVar) {
 
-        if (config.missing && config.missing == mixedVar) return false; 
+        if (valIsMissing(mixedVar, config.missing)) return false; 
 
         if (!isInt(mixedVar) && !isFloat(mixedVar) && isDate(mixedVar, 'YYYY-MM-DD HH:mm:ss')) return 'datetime';
         if (!isInt(mixedVar) && !isFloat(mixedVar) && isDate(mixedVar, 'YYYY-MM-DD')) return 'date';
         if (!isInt(mixedVar) && !isFloat(mixedVar) && !isDate(mixedVar) && isStr(mixedVar)) return 'str';
         if (isInt(mixedVar) && !isFloat(mixedVar) && !isStr(mixedVar)) return 'int';
         if (!isInt(mixedVar) && isFloat(mixedVar) && !isStr(mixedVar)) return 'float';
+        return false;
+    }
+
+    /**
+     * Check whether a given data value is 'missing' or empty.
+     *
+     * @param {str,number} val - data value to check for emptyness
+     * @param {list} lookup - list of other values to treat as empty
+     *    e.g. 'NULL', or 'NA'
+     *
+     *
+     */
+    function valIsMissing(val, lookup) {
+        if (val === '' || (Array.isArray(lookup) && lookup.indexOf(val) > -1) ) {
+            return true;
+        }
         return false;
     }
 
@@ -393,7 +417,8 @@ var GUI = (function() {
             if (colType !== 'excluded') {
                 var unique = [...new Set(dat.map(item => item[colName]))].sort(); // http://stackoverflow.com/a/35092559/1153897
                 if (colType == 'int' || colType == 'float') unique = unique.sort(sortNumber); // sort numerically if needed
-                vals[colName] = unique.map(function(d) { return d == config.missing ? null : d });
+                vals[colName] = unique.filter(function(d) { return !valIsMissing(d, config.missing) })
+
             }
         })
 

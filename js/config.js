@@ -1,7 +1,7 @@
 // setup GUI
 var guiSetup = {
     useToyData: true, // whether to show toy data options in file upload modal
-    missing: "", // data to treat as missing
+    missing: ['NULL'], // data to treat as missing, empty string is implied
     plotTypes: {
         heatMapChart: heatMapConfig,
         scatterChart: scatterConfig,

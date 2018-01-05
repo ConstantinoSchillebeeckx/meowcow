@@ -1,6 +1,6 @@
 var distroPlotCofig = {
     label: 'Distribution',
-    allowFacets: false,
+    allowFacets: true,
     parseData: false,
     axes: [
         {
