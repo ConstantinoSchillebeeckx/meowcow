@@ -279,7 +279,7 @@ var meowcow = (function() {
 
 
             // set margin
-            var titleFontSize = 20;
+            var titleFontSize = 15;
             var margin = {
                 top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
                 right: marginRight(formVals), 
@@ -306,7 +306,7 @@ var meowcow = (function() {
             formatAxisLabels(chart, _gui.colTypes(), formVals);
 
             // set title
-            formatChartTitle(sel, title); 
+            formatChartTitle(sel, title, titleFontSize); 
 
             if (chartUpdate) {
                 chart.update();

@@ -116,7 +116,7 @@ var distroPlotCofig = {
                 on: 'Yes',
                 off: 'No',
             },
-            setDefault: true, 
+            setDefault: false, 
             domClass: 'col-sm-2',
         }, {
             accessor: 'showOnlyOutliers',
