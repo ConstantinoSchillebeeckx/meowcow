@@ -1427,7 +1427,7 @@ var GUI = (function() {
         var style = "\n";
         for (var i=0; i<document.styleSheets.length; i++) {
             var sheet = document.styleSheets[i];
-            if (sheet.href && sheet.href.split('/').pop() === 'styles.css') {
+            if (sheet.href && ['styles.css','nv.d3.min.css'].indexOf(sheet.href && sheet.href.split('/').pop()) != -1) {
                 var rules = sheet.rules;
                 if (rules) {
                     for (var j=0; j<rules.length; j++) {

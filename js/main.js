@@ -201,7 +201,6 @@ var meowcow = (function() {
         // nvd3 expects SVG to exist already
         d3.select(sel + ' svg');
 
-
         // create the chart
         var chart;
         var chartUpdate = false; // whether the chart should be updated
@@ -229,7 +228,7 @@ var meowcow = (function() {
                 var accessorAttr = formVals.plotSetup[d.accessor]; // get the GUI value for the given chart axis option
 
                 // ensure option from config is valid
-                if (!checkIfIsOption(chart[accessorName], accessorName)) {
+                if (!checkIfIsOption(chart[accessorName], accessorName, plotType)) {
                     d3.select(sel).remove()
                     return false;
                 }
@@ -255,7 +254,7 @@ var meowcow = (function() {
                     var optionName = d.accessor;
                     var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
 
-                    if (!checkIfIsOption(chart[optionName], optionName)) {
+                    if (!checkIfIsOption(chart[optionName], optionName, plotType)) {
                         d3.select(sel).remove()
                         return false;
                     }
@@ -555,13 +554,15 @@ var meowcow = (function() {
      * not, an error message is displayed.
      *
      * @param {} 
+     * @param {str} option - option name
+     * @param {str} chartType - chart type being checked for option 
      *
      * @return - false if option is not valid
      */
-    function checkIfIsOption(func, str) {
+    function checkIfIsOption(func, option, chartType) {
 
         if (typeof func !== "function") {
-            displayWarning("The chart option <code>" + str + "</code> does not exist for this chart; please change it in your config.", _warningsID, true);
+            displayWarning("The chart option <code>" + option + "</code> does not exist for the chart " + chartType + "; please change it in your config.", _warningsID, true);
             return false;
         }
         return true;
