@@ -1575,6 +1575,10 @@ var GUI = (function() {
                 displayWarning("You cannot specify a <code>Rows</code> option when specifying <code>Column wrap</code>.", _warningsID, true);
                 return false;
             }
+            if (wrapVal > 0 && colVal === null) {
+                displayWarning("You must specify a <code>Columns</code> option when specifying <code>Column wrap</code>.", _warningsID, true);
+                return false;
+            }
             if (rowVal === colVal) {
                 console.log(rowVal, colVal)
                 displayWarning("You cannot choose the same field for both <code>Rows</code> and <code>Columns</code> options.", _warningsID, true);
