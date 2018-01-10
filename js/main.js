@@ -39,6 +39,7 @@ var meowcow = (function() {
         _aspectRatio = 2.0; // width to height ratio of facets
         _optsSet = {}; // settings chosen in Setup tab, used as a cache
         _facetDat = []; // array of datasets for each facet
+        _legendOffset = 20; // how much to offset title when a legend is present
     
 
 
@@ -280,7 +281,8 @@ var meowcow = (function() {
             // set margin
             var titleFontSize = 15;
             var margin = {
-                top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
+                top: marginTop(formVals),
+                //top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
                 right: marginRight(formVals), 
                 bottom: (marginBottom(formVals) < 60 && formVals.plotSetup.xLabel) ? 60 : marginBottom(formVals), 
                 left: (marginLeft(formVals) < 100 && formVals.plotSetup.yLabel) ? 100 : marginLeft(formVals), 
@@ -305,7 +307,7 @@ var meowcow = (function() {
             formatAxisLabels(chart, _gui.colTypes(), formVals);
 
             // set title
-            formatChartTitle(sel, title, titleFontSize); 
+            formatChartTitle(sel, title, titleFontSize, formVals); 
 
             if (chartUpdate) {
                 chart.update();
@@ -335,17 +337,18 @@ var meowcow = (function() {
      * @param {int, optional} fontSize - font size to style title with
      *        if not provided, will be calculatd automatically based
      *        on the facet width
+     * @param {obj} formVals - GUI option values
      *
      * @return void
      */
-    function formatChartTitle(sel, title, fontSize) {
+    function formatChartTitle(sel, title, fontSize, formVals) {
 
         var svg = d3.select(sel + ' svg');
+
+        // remove previous title if updating text
+        if (svg.select('.chartTitle').empty() === false) svg.select('.chartTitle').remove();
    
         if (title && (svg.select('.chartTitle').empty() || svg.select('.chartTitle text').text() !== title)) {
-
-            // remove previous title if updating text
-            if (svg.select('.chartTitle').empty() === false) svg.select('.chartTitle').remove();
 
             if (typeof fontSize === 'undefined') fontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
 
@@ -358,6 +361,16 @@ var meowcow = (function() {
                 .style('text-anchor','middle')
                 .style('font-size', fontSize + 'px')
                 .text(title);
+
+            // manually move the whole chart group down
+            // we can't simply use the top-margin because any legend
+            // present is aligned to the top (so it always stays at the top)
+            // by manually adjusting the chart group, we get around this
+            // NOTE: this won't work if setting a title on first render
+            // since the .nv-wrap doesn't exist yet ...
+            svg.select('.nv-wrap')
+                .transition()
+                .attr('transform', function(d) { return 'translate(' + marginLeft(formVals) + ',' + (marginTop(formVals) + fontSize) + ')'; })
         }
     }
 
