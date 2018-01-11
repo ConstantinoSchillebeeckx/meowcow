@@ -1,4 +1,5 @@
 var scatterConfig = {
+    inDevelopment: true,
     label: 'Scatter',
     axes: [
         {

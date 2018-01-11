@@ -1,5 +1,6 @@
 var heatMapConfig = { 
     allowFacets: true,
+    inDevelopment: true,
     label: 'Heatmap', 
     axes: [
         {

@@ -1,5 +1,6 @@
 var lineConfig = {
     allowFacets: true,
+    inDevelopment: true,
     label: 'Line',
     axes: [ 
         {

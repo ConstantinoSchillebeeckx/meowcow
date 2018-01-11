@@ -106,6 +106,7 @@ var meowcow = (function() {
     var marginBottom = function(d) { return d.plotFlourish.marginBottom[0]; }
     var marginLeft = function(d) { return d.plotFlourish.marginLeft[0]; }
     var marginRight = function(d) { return d.plotFlourish.marginRight[0]; }
+    var inDevelopment = function(d) { return 'inDevelopment' in config.plotTypes[d.plotSetup.plotTypes]; }
 
 
      /**
@@ -138,7 +139,14 @@ var meowcow = (function() {
             _vVal = getFacetRow(guiVals);
 
         }
-        jQuery('#' + _warningsID).empty();
+        
+        // show development warning if needed,
+        // otherwise clear out all warnings
+        if (inDevelopment(guiVals)) {
+            displayWarning("This chart type is currently in development, all features may not work correctly", _warningsID, false);
+        } else {
+            jQuery('#' + _warningsID).empty();
+        }
 
         // draw plot in each facet
         var chartCount = 0;
