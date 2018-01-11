@@ -1083,7 +1083,9 @@ var GUI = (function() {
         // render details for each of the loaded columns
         Object.keys(colTypes).forEach(function(attrName) {
        
-            var attrType = colTypes[attrName];
+            var attrFormat = colTypes[attrName];
+
+            var attrType = attrFormat === 'str' ? 'Categorical' : 'Ordinal'
 
             var valText = '';
             var colVals = _unique[attrName];
@@ -1105,12 +1107,18 @@ var GUI = (function() {
                 .text('Type: ')
                 .append('code')
                 .text(attrType);
+            ul.append('li')
+                .text('Format: ')
+                .append('code')
+                .text(attrFormat);
 
-            if (attrType == 'int' || attrType == 'float') {
+            if (attrFormat == 'int' || attrFormat == 'float') {
                 ul.append('li')
-                    .text('range: [' + d3.extent(colVals) + ']');
-            } else if (attrType == 'str') {
-                valText = 'values: <mark>';
+                    .text('Range: [' + d3.extent(colVals).join(', ') + ']');
+            } else if (attrFormat == 'str') {
+                ul.append('li')
+                    .text('Count: ' + colVals.length)
+                valText = 'Values: <mark>';
                 if (colVals.length > numShow) {
                     ul.append('li')
                         .text('values: ')
@@ -1118,11 +1126,11 @@ var GUI = (function() {
                         .text(colVals.slice(0, numShow).join(', ') + ' ...')
                 } else {
                     ul.append('li')
-                        .text('values: ')
+                        .text('Values: ')
                         .append('mark')
                         .text(colVals.join(', '))
                 }
-            } else if (attrType == 'datetime' || attrType == 'date') { 
+            } else if (attrFormat == 'datetime' || attrFormat == 'date') { 
                 var li = ul.append('li')
                     li.append('kbd')
                         .text(_unique[attrName][0])
