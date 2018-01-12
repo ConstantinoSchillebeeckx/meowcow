@@ -47,8 +47,7 @@ var scatterConfig = {
                 html: true,
                 placement: "auto right"
             },
-        },
-        {
+        }, {
             accessor: 'showDistY',
             label: 'Show Y distr.',
             type: 'toggle',

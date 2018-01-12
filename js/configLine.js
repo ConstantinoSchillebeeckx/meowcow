@@ -50,8 +50,12 @@ var lineConfig = {
                 html: true,
                 placement: "auto right"
             },
-        },
-        {
+        }, {
+            accessor: 'legendPosition',
+            label: 'Legend position',
+            type: 'select',
+            values: {Top: 'top', Bottom: 'bottom'},
+        }, {
             accessor: 'clipEdge',
             label: 'Clip edge',
             type: 'toggle',
