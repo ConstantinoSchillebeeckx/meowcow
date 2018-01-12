@@ -106,7 +106,9 @@ var meowcow = (function() {
     var marginBottom = function(d) { return d.plotFlourish.marginBottom[0]; }
     var marginLeft = function(d) { return d.plotFlourish.marginLeft[0]; }
     var marginRight = function(d) { return d.plotFlourish.marginRight[0]; }
-    var inDevelopment = function(d) { return 'inDevelopment' in config.plotTypes[d.plotSetup.plotTypes]; }
+    var getPlotOptions = function(d) { return config.plotTypes[d.plotSetup.plotTypes]; }
+    var getPlotType = function(d) { return d.plotSetup.plotTypes; }
+    var inDevelopment = function(d) { return 'inDevelopment' in getPlotOptions(d); }
 
 
      /**
@@ -158,9 +160,9 @@ var meowcow = (function() {
                 var dat = _facets[rowName][colName];
 
                 // parse data if needed before plotting
-                var parseFunc = guiVals.parseData;
+                var parseFunc = getPlotOptions(guiVals).parseData;
                 if (typeof parseFunc === "function") {
-                    dat = parseFunc(dat); // TODO ?
+                    dat = parseFunc(dat); 
                 }
 
                 if (typeof dat !== 'undefined') {
@@ -204,11 +206,11 @@ var meowcow = (function() {
      */
     function populateChart(dat, sel, formVals, title, chartCount) {
 
-        var plotType = formVals.plotSetup.plotTypes;
-        var plotOptions = config.plotTypes[plotType]; // lookup options for selected plot type
+        var plotType = getPlotType(formVals);
+        var plotOptions = getPlotOptions(formVals); // lookup options for selected plot type
 
         // nvd3 expects SVG to exist already
-        d3.select(sel + ' svg');
+        var svg = d3.select(sel + ' svg');
 
         // create the chart
         var chart;
@@ -235,23 +237,28 @@ var meowcow = (function() {
                 var d = plotOptions.axes[axis];
                 var accessorName = d.accessor;
                 var accessorAttr = formVals.plotSetup[d.accessor]; // get the GUI value for the given chart axis option
+                var skipCheck = ('skipCheck' in d && d.skipCheck) ? true : false;
 
-                // ensure option from config is valid
-                if (!checkIfIsOption(chart[accessorName], accessorName, plotType)) {
-                    d3.select(sel).remove()
-                    return false;
-                }
+                if (!skipCheck) {
 
-                if ((accessorName && !chartUpdate) || accessorAttr !== _optsSet[chartCount][accessorName]) {
-                    console.log(chart[accessorName], accessorAttr)
-                    if (accessorAttr) {
-                        chart[accessorName](function(e) { return e[accessorAttr] });
-                    } else {
-                        chart[accessorName](accessorAttr);
+                    // ensure option from config is valid
+                    if (!checkIfIsOption(chart[accessorName], accessorName, plotType)) {
+                        d3.select(sel).remove()
+                        return false;
                     }
-                    if (!(chartCount in _optsSet)) _optsSet[chartCount] = {}
 
-                    _optsSet[chartCount][accessorName] = accessorAttr
+                    if ((accessorName && !chartUpdate) || accessorAttr !== _optsSet[chartCount][accessorName]) {
+                        console.log(chart[accessorName], accessorAttr)
+                        if (accessorAttr) {
+                            chart[accessorName](function(e) { return e[accessorAttr] });
+                        } else {
+                            chart[accessorName](accessorAttr);
+                        }
+                        if (!(chartCount in _optsSet)) _optsSet[chartCount] = {}
+
+                        _optsSet[chartCount][accessorName] = accessorAttr
+                    }
+
                 }
 
                 return true; // since we're looping with a [].every()
@@ -297,16 +304,20 @@ var meowcow = (function() {
             };
             chart.margin(margin);
 
-            // TODO if automatically adding margin space due to axis labels, update the GUI slider
+            // TODO if automatically adding margin space due to axis labels, 
+            // update the GUI slider
 
             console.log(formVals)
 
             // adjust height of all rows if min row height has changed
-            var rowHeight = getFacetMinHeight(formVals); // will be false if slider set to 'Auto'
+            // will be false if slider set to 'Auto'
+            var rowHeight = getFacetMinHeight(formVals); 
+
             if (rowHeight != getFacetCurrentHeight() && rowHeight) {
                 jQuery('.facet').animate({'height': rowHeight}, 150);
                 chart.height(rowHeight);
-            } else if (!rowHeight && getFacetAutoHeight() != getFacetCurrentHeight()) { // update height to auto
+            } else if (!rowHeight && getFacetAutoHeight() != getFacetCurrentHeight()) { 
+                // update height to auto
                 jQuery('.facet').animate({'height': getFacetAutoHeight()}, 150);
                 chart.height(getFacetAutoHeight());
             }
@@ -315,18 +326,18 @@ var meowcow = (function() {
             formatAxisLabels(chart, _gui.colTypes(), formVals);
 
             // set title
-            formatChartTitle(sel, title, titleFontSize, formVals); 
+            formatChartTitle(svg, title, titleFontSize, formVals); 
+
+            svg.datum(dat) // rebind data in case it changed
 
             if (chartUpdate) {
                 chart.update();
             } else {
-                d3.select(sel + ' svg')
-                    .datum(dat)
-                    .call(chart);
+                svg.call(chart);
             }
 
-
-            nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); // TODO update facet col widths on window resize
+            nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); 
+            // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
         });
@@ -340,7 +351,7 @@ var meowcow = (function() {
      * which acts as a chart title; it will 
      * be centered on the chart
      *
-     * @param {string} sel - id for facet into which to render plot
+     * @param {string} sel - chart svg selection
      * @param {str} title - title to append to chart
      * @param {int, optional} fontSize - font size to style title with
      *        if not provided, will be calculatd automatically based
@@ -349,9 +360,7 @@ var meowcow = (function() {
      *
      * @return void
      */
-    function formatChartTitle(sel, title, fontSize, formVals) {
-
-        var svg = d3.select(sel + ' svg');
+    function formatChartTitle(svg, title, fontSize, formVals) {
 
         // remove previous title if updating text
         if (svg.select('.chartTitle').empty() === false) svg.select('.chartTitle').remove();
@@ -360,7 +369,8 @@ var meowcow = (function() {
 
             if (typeof fontSize === 'undefined') fontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
 
-            var facetWidth = jQuery(sel).width();
+            //var facetWidth = jQuery(sel).width();
+            var facetWidth = svg.node().parentNode.getBoundingClientRect().width
 
             svg.append('g')
                 .attr('class','chartTitle')
@@ -369,16 +379,6 @@ var meowcow = (function() {
                 .style('text-anchor','middle')
                 .style('font-size', fontSize + 'px')
                 .text(title);
-
-            // manually move the whole chart group down
-            // we can't simply use the top-margin because any legend
-            // present is aligned to the top (so it always stays at the top)
-            // by manually adjusting the chart group, we get around this
-            // NOTE: this won't work if setting a title on first render
-            // since the .nv-wrap doesn't exist yet ...
-            svg.select('.nv-wrap')
-                .transition()
-                .attr('transform', function(d) { return 'translate(' + marginLeft(formVals) + ',' + (marginTop(formVals) + fontSize) + ')'; })
         }
     }
 

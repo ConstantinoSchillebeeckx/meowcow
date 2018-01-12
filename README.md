@@ -118,6 +118,7 @@ Each entry in this list will generate a select input in the setup tab of the GUI
 - **type** - str, the data attribute's data type, either [`quantitative`]() or [`ordinal`](); if not provided, it is assumed any data type will do - OPTIONAL
 - **accessor** - str, accessor with which to bind data attribute, must be a NVD3 model option for the given plot type - REQUIRED
 - **label** - str, label to give to axes select; if not provided, accessor value will be used - OPTIONAL
+- **skipCheck** - bool, when passed as `true` this accessor won't be checked against the NVD3 model; this is normally set when specifying a `parseData` function.
 
 #### options
 
