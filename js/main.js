@@ -1,11 +1,3 @@
-/*
-TODO
-- gui rules set by config file (e.g. some charts could allow x-axis to be the same as the y-axis)
-- data filtering
-- min row height (should also set chart height)
-- x-axis changes aren't working
-*/
-
 var meowcow = (function() {
 
     
@@ -22,9 +14,9 @@ var meowcow = (function() {
     //------------------------------------------------------------
     var container = false,  // DOM into which to render everything
         config = {},        // config details for plots
-        data = {},           // data to plot
+        data = false,       // data to plot
         colTypes = {},      // overwrite column types with these
-        ignoreCol = false   // columns to ignore in data
+        ignoreCol = []   // columns to ignore in data
 
 
     //============================================================
@@ -36,16 +28,18 @@ var meowcow = (function() {
         _renderBtn='renderBtn', // ID for GUI render button
         _chartArray=[],         // contains any renderd NVD3 chart objects
         _minRowHeight = 'minRowHeight',  // facet min row height slider ID
-        _guiFacetCols = false,
-        _guiFacetRows = false,
-        _guiFacetWrap = false,
-        _guiFacetMinHeight = false,
         _facets,
-        _facetRows,
-        _facetCols,
         _facetVals,
         _hVal,
-        _vVal
+        _vVal,
+        _numRows,   // number of facet rows
+        _numCols,   // number of facet columns
+        _warningsID = 'warnings',
+        _guiPanelID = 'guiPanel',
+        _aspectRatio = 2.0; // width to height ratio of facets
+        _optsSet = {}; // settings chosen in Setup tab, used as a cache
+        _facetDat = []; // array of datasets for each facet
+        _legendOffset = 20; // how much to offset title when a legend is present
     
 
 
@@ -103,8 +97,18 @@ var meowcow = (function() {
 
     var getFacetRow = function(d) { return d.plotFacets['row-facet']; }
     var getFacetCol = function(d) { return d.plotFacets['col-facet']; }
-    var getFacetWrap = function(d) { return d.plotFacets.colWrap; }
-    var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight]; }
+    var getFacetMinHeight = function(d) { return d.plotFacets[_minRowHeight] == 'Auto' ? false : d.plotFacets[_minRowHeight][0]; }
+    var getFacetAutoHeight = function() { return jQuery('#facet_0').width() / _aspectRatio };
+    var getFacetCurrentHeight = function() { return jQuery('#facet_0').height(); };
+    var calcColWidth = function() { return jQuery('#' + _guiPanelID).width() / _numCols };
+    var updateColWidth = function() { jQuery('.facet').css('width',calcColWidth()); }
+    var marginTop = function(d) { return d.plotFlourish.marginTop[0]; }
+    var marginBottom = function(d) { return d.plotFlourish.marginBottom[0]; }
+    var marginLeft = function(d) { return d.plotFlourish.marginLeft[0]; }
+    var marginRight = function(d) { return d.plotFlourish.marginRight[0]; }
+    var getPlotOptions = function(d) { return config.plotTypes[d.plotSetup.plotTypes]; }
+    var getPlotType = function(d) { return d.plotSetup.plotTypes; }
+    var inDevelopment = function(d) { return 'inDevelopment' in getPlotOptions(d); }
 
 
      /**
@@ -123,40 +127,46 @@ var meowcow = (function() {
         //jQuery('.collapse').collapse() // collapse GUI
 
         var guiVals = _gui.getGUIvals();
+        var title = guiVals.plotFlourish.chartTitle;
 
         // clear any previously existent plots/warnings
         // plots are only cleared if the GUI options for facets are changed
-        if (facetOptionsHaveChanged(guiVals)) { 
+        // of if the filtering is changed
+        if (_gui.facetOptionsHaveChanged() || _gui.filterOptionsHaveChanged() || _gui.plotTypeHasChanged()) { 
+
             jQuery(canvas).empty(); 
-
-            // generate facets and group data
             _facets = setupFacetGrid(guiVals, _gui.data());
-            _facetRows = Object.keys(_facets);
-            _facetCols = Object.keys(_facets[_facetRows[0]]);
-
             _facetVals = guiVals.plotFacets;
-            _hVal = _facetVals['col-facet'];
-            _vVal = _facetVals['row-facet'];
+            _hVal = getFacetCol(guiVals)
+            _vVal = getFacetRow(guiVals);
+
         }
-        jQuery('#warning').empty();
-
-
-        // store current GUI facet options so we can compare for updates
-        _guiFacetCols = getFacetRow(guiVals);
-        _guiFacetRows = getFacetCol(guiVals);
-        _guiFacetWrap = getFacetWrap(guiVals);
-        _guiFacetMinHeight = getFacetMinHeight(guiVals)
+        
+        // show development warning if needed,
+        // otherwise clear out all warnings
+        if (inDevelopment(guiVals)) {
+            displayWarning("This chart type is currently in development, all features may not work correctly", _warningsID, false);
+        } else {
+            jQuery('#' + _warningsID).empty();
+        }
 
         // draw plot in each facet
         var chartCount = 0;
-        _facetRows.forEach(function(rowName,i) {
-            _facetCols.forEach(function(colName,j) {
+        for (let i=0; i<_numRows; i++) {
+            for (let j=0; j<_numCols; j++) {
 
-                var facetDat = _facets[rowName][colName];
+                var rowName = Object.keys(_facets)[i];
+                var colName = Object.keys(_facets[rowName])[j];
+                var dat = _facets[rowName][colName];
 
-                if (typeof facetDat !== 'undefined') {
+                // parse data if needed before plotting
+                var parseFunc = getPlotOptions(guiVals).parseData;
+                if (typeof parseFunc === "function") {
+                    dat = parseFunc(dat); 
+                }
 
-                    var title = null;
+                if (typeof dat !== 'undefined') {
+
                     if (_facetVals.facetOn) {
                         if (_hVal && _vVal) {
                             title = _vVal + ' = ' + rowName + ' | ' + _hVal + ' = ' + colName;
@@ -166,14 +176,12 @@ var meowcow = (function() {
                     }
 
                     // draw plot
-                    populateChart(facetDat, '#facet_'+chartCount, guiVals, title, chartCount);
+                    populateChart(dat, '#facet_'+chartCount, guiVals, title, chartCount);
+                    chartCount += 1;
                 }
-                chartCount += 1;
-            });
+            }
 
-            // update list of columns for new row
-            if (_facetRows.length > 1 && (i+1) < _facetRows.length) _facetCols = Object.keys(_facets[_facetRows[i+1]]);
-        })
+        }
 
         
         jQuery('#'+_renderBtn).html('Update').prop('disabled', false); // TODO wait until everything finishes rendering ... async!
@@ -182,128 +190,240 @@ var meowcow = (function() {
 
 
 
-    /**
-     * Return true if facet options have been changed since previous 
-     * render; this is used to reset all the plots/facets for
-     * re-drawing.
-     *
-     * @return - true if facet options have been changed; false
-     *   otherwise.
-     */
-    function facetOptionsHaveChanged(guiVals) {
-        if (_guiFacetCols !== getFacetRow(guiVals) || 
-            _guiFacetRows !== getFacetCol(guiVals) || 
-            _guiFacetWrap !== getFacetWrap(guiVals) || 
-            _guiFacetMinHeight !== getFacetMinHeight(guiVals)) {
-            console.log('facet updated');
-            return true;
-        }
-        return false
-    }
 
     /**
      * Once all GUI options and data are set, we can
      * render the plot.
      *
      * @param {obj} dat - data for each facet
-     * @param {string} sel - selector for facet into which to render plot
+     * @param {string} sel - id for facet into which to render plot
      * @param {obj} formVals - GUI option values
      * @param {string} title - [optional] title for plot, should be null if no title
-     * @param {int} chartCount - chart facet number to update/plot, is used to updated
+     * @param {int} chartCount - chart facet number to update/plot, is used to update
      *   the _chartArray plot store.
      *
      * @return void
      */
     function populateChart(dat, sel, formVals, title, chartCount) {
 
-        var plotType = formVals.plotSetup.plotTypes;
-        var plotOptions = config.plotTypes[plotType]; // lookup options for selected plot type
-        var datReady = dat;
+        var plotType = getPlotType(formVals);
+        var plotOptions = getPlotOptions(formVals); // lookup options for selected plot type
 
         // nvd3 expects SVG to exist already
-        d3.select(sel + ' svg');
-
-        // parse data if needed before plotting
-        var parseFunc = plotOptions.parseData;
-        if (typeof parseFunc === "function") {
-            datReady = parseFunc(dat);
-        }
-
+        var svg = d3.select(sel + ' svg');
 
         // create the chart
         var chart;
         var chartUpdate = false; // whether the chart should be updated
         nv.addGraph(function() {
-            console.log('Rendering ' + plotType);
-
-            // load previous chart if it exists
-            if (typeof _chartArray[chartCount] !== 'undefined') {
+    
+            // load previous chart if:
+            // - it exists (and)
+            // - facet options have not changed (and)
+            // - plot type has not changed
+            if (typeof _chartArray[chartCount] !== 'undefined' && !_gui.facetOptionsHaveChanged() && !_gui.plotTypeHasChanged()) {
                 chart = _chartArray[chartCount];
                 chartUpdate = true;
-                console.log('update')
+                console.log('Updating ' + plotType + ' #' + chartCount);
             } else {
+                console.log('Rendering ' + plotType + ' #' + chartCount);
                 chart = nv.models[plotType]();
             }
 
             // setup data accessors for each axis
             // we will need the name of the accessor function to be called on the chart
             // as well as the actual accessor function (which is defined by the GUI)
-            var optsSet = {};
-            ['x','y','z'].forEach(function(d) {
-                var accessorName = plotOptions.setup[d].accessor;
-                var accessorAttr = formVals.plotSetup[d+'-axis']; // get the GUI value for the given chart axis option
-                if (accessorName) {
-                    optsSet[accessorName] = accessorAttr;
-                    chart[accessorName](function(e) { return e[accessorAttr] });
+            Object.keys(plotOptions.axes).every(function(axis) {
+                var d = plotOptions.axes[axis];
+                var accessorName = d.accessor;
+                var accessorAttr = formVals.plotSetup[d.accessor]; // get the GUI value for the given chart axis option
+                var skipCheck = ('skipCheck' in d && d.skipCheck) ? true : false;
+
+                if (!skipCheck) {
+
+                    // ensure option from config is valid
+                    if (!checkIfIsOption(chart[accessorName], accessorName, plotType)) {
+                        d3.select(sel).remove()
+                        return false;
+                    }
+
+                    if ((accessorName && !chartUpdate) || accessorAttr !== _optsSet[chartCount][accessorName]) {
+                        console.log(chart[accessorName], accessorAttr)
+                        if (accessorAttr) {
+                            chart[accessorName](function(e) { return e[accessorAttr] });
+                        } else {
+                            chart[accessorName](accessorAttr);
+                        }
+                        if (!(chartCount in _optsSet)) _optsSet[chartCount] = {}
+
+                        _optsSet[chartCount][accessorName] = accessorAttr
+                    }
+
                 }
+
+                return true; // since we're looping with a [].every()
             });
-/*
-            chart['value'](function(e) { return e.Weight })
-            if (chartUpdate) {
-                chart['x'](function(e) { return e.Drug })
-            } else {
-                chart['x'](function(e) { return e.Study })
-            }
-*/
+
             // set chart options
-            plotOptions.options.forEach(function(d) {
-                var optionName = d.accessor;
-                var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
+            if ('options' in plotOptions) {
+                plotOptions.options.every(function(d) {
+                    var optionName = d.accessor;
+                    var optionValue = formVals.plotOptions[optionName]; // get the GUI value for the given chart options
 
-                // if GUI option was an array (for a single handle slider) grab the only element
-                if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
+                    if (!checkIfIsOption(chart[optionName], optionName, plotType)) {
+                        d3.select(sel).remove()
+                        return false;
+                    }
 
-                // if GUI option was a select input type, data comes in as an object, grab just the values
-                if (typeof optionValue === 'object' && optionValue != null) optionValue = optionValue.value;
+                    // if GUI option was an array (for a single handle slider) grab the only element
+                    if (Array.isArray(optionValue) && optionValue.length === 1) optionValue = optionValue[0];
 
-                // convert bool string into bool
-                optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
+                    // if GUI option was a select input type, data comes in as an object, grab just the values
+                    if (typeof optionValue === 'object' && optionValue != null) optionValue = optionValue.value;
 
-                chart[optionName](optionValue)
-                optsSet[optionName] = optionValue;
-            })
-            console.log(optsSet)
+                    // convert bool string into bool
+                    optionValue = optionValue === "true" ? true : optionValue === "false" ? false : optionValue;
+
+                    if (!chartUpdate || optionValue !== chart[optionName]()) { // only update those options that have changed
+                        chart[optionName](optionValue)
+                    }
+
+                    return true; // since we're looping with a [].every()
+                })
+            }
+
+
+            // set margin
+            var titleFontSize = 15;
+            var margin = {
+                top: marginTop(formVals),
+                //top: (title && marginTop(formVals) < titleFontSize * 2) ? titleFontSize * 2 : marginTop(formVals), 
+                right: marginRight(formVals), 
+                bottom: (marginBottom(formVals) < 60 && formVals.plotSetup.xLabel) ? 60 : marginBottom(formVals), 
+                left: (marginLeft(formVals) < 100 && formVals.plotSetup.yLabel) ? 100 : marginLeft(formVals), 
+            };
+            chart.margin(margin);
+
+            // TODO if automatically adding margin space due to axis labels, 
+            // update the GUI slider
+
+            console.log(formVals)
+
+            // adjust height of all rows if min row height has changed
+            // will be false if slider set to 'Auto'
+            var rowHeight = getFacetMinHeight(formVals); 
+
+            if (rowHeight != getFacetCurrentHeight() && rowHeight) {
+                jQuery('.facet').animate({'height': rowHeight}, 150);
+                chart.height(rowHeight);
+            } else if (!rowHeight && getFacetAutoHeight() != getFacetCurrentHeight()) { 
+                // update height to auto
+                jQuery('.facet').animate({'height': getFacetAutoHeight()}, 150);
+                chart.height(getFacetAutoHeight());
+            }
+
+            // set axis labels
+            formatAxisLabels(chart, _gui.colTypes(), formVals);
 
             // set title
-            if (title !== null && title) chart.title(title);
+            formatChartTitle(svg, title, titleFontSize, formVals); 
 
-            //formatAxisTitle(chart, guiVals);
-            //formatTooltip(chart, guiVals);
+            svg.datum(dat) // rebind data in case it changed
 
             if (chartUpdate) {
                 chart.update();
             } else {
-                d3.select(sel + ' svg')
-                    .datum(datReady)
-                    .call(chart);
+                svg.call(chart);
             }
 
-            nv.utils.windowResize(chart.update);
+            nv.utils.windowResize(function() { updateColWidth(); chart.update; } ); 
+            // TODO update facet col widths on window resize
             _chartArray[chartCount] = chart;
 
-            return chart;
         });
+       
+        return chart;
     }
+
+
+    /**
+     * Add a DOM element within the chart SVG
+     * which acts as a chart title; it will 
+     * be centered on the chart
+     *
+     * @param {string} sel - chart svg selection
+     * @param {str} title - title to append to chart
+     * @param {int, optional} fontSize - font size to style title with
+     *        if not provided, will be calculatd automatically based
+     *        on the facet width
+     * @param {obj} formVals - GUI option values
+     *
+     * @return void
+     */
+    function formatChartTitle(svg, title, fontSize, formVals) {
+
+        // remove previous title if updating text
+        if (svg.select('.chartTitle').empty() === false) svg.select('.chartTitle').remove();
+   
+        if (title && (svg.select('.chartTitle').empty() || svg.select('.chartTitle text').text() !== title)) {
+
+            if (typeof fontSize === 'undefined') fontSize = d3.min([jQuery(sel).width() * 0.07, 20]); // for title
+
+            //var facetWidth = jQuery(sel).width();
+            var facetWidth = svg.node().parentNode.getBoundingClientRect().width
+
+            svg.append('g')
+                .attr('class','chartTitle')
+                .attr('transform', function(d) { return 'translate('+ facetWidth/2 +','+ fontSize + ')'; })
+                .append('text')
+                .style('text-anchor','middle')
+                .style('font-size', fontSize + 'px')
+                .text(title);
+        }
+    }
+
+
+    /*
+     * Add axis title and format tick labels based on
+     * field type.
+     *
+     * @param {obj} chart - nvd3 chart object
+     * @param {obj} colTypes - column type of each column
+     *              of the input data. e.g. float, str
+     * @param {str} x - label for x-axis
+     * @param {str} y - label for y-axis
+     * @param {int} fontSize - font size for axis ticks, default 10
+     *
+     * @return void
+     */
+
+    function formatAxisLabels(chart, colTypes, guiVals, fontSize) {
+
+        var x = guiVals.plotSetup.x;
+        var y = guiVals.plotSetup.y;
+
+        if (typeof fontSize === 'undefined') fontSize = 10;
+
+        if (colTypes[x] === 'float') {
+            var digits = guiVals.plotFlourish.xDigits != null ? guiVals.plotFlourish.xDigits : 2; // default to 2 digits
+            chart.xAxis.tickFormat(d3.format('.' + digits + 'f'));
+        }
+        chart.showXAxis(true);
+        chart.xAxis
+            .axisLabel(guiVals.plotFlourish.xLabel != null ? guiVals.plotFlourish.xLabel : x)
+            .fontSize(fontSize);
+
+        if (colTypes[y] === 'float') {
+            var digits = guiVals.plotFlourish.yDigits != null ? guiVals.plotFlourish.yDigits : 2; // default to 2 digits
+            chart.yAxis.tickFormat(d3.format('.' + digits + 'f'));
+        }
+        chart.showYAxis(true);
+        chart.yAxis
+            .axisLabel(guiVals.plotFlourish.yLabel != null ? guiVals.plotFlourish.yLabel : y)
+            .fontSize(fontSize);
+
+    }
+
 
 
 
@@ -332,57 +452,62 @@ var meowcow = (function() {
      */
     function setupFacetGrid(guiVals, dat) {
 
-        var facetRow, facetCol, colDat, colWrap, plotDom;
+
+        var colDat, colWrap, plotDom;
         var rowDat = ['row0'];
         var colDat = ['col0'];
-        var numRows = rowDat.length;
-        var numCols = colDat.length;
-        var aspectRatio = 2.0; // width to height ratio
+        _numRows = rowDat.length;
+        _numCols = colDat.length;
         var plotDom = d3.select('#' + _canvasWrap);
         var facetVals = guiVals.plotFacets;
-        var minRowHeight = guiVals.plotFacets.minRowHeight[0];
+        var minRowHeight = getFacetMinHeight(guiVals);
+        _chartArray = []; // reset in case data gets filtered
 
         if (facetVals.facetOn) {  // if plotting with facets
-            var hVal = facetVals['col-facet'].value
-            var vVal = facetVals['row-facet'].value
+            var hVal = getFacetCol(guiVals);
+            var vVal = getFacetRow(guiVals);
             if (vVal) { // if row facet specified
-                facetRow = facetVals['row-facet'].label;
-                rowDat = _unique[facetRow];
+                rowDat = vVal in guiVals.plotFilter ? guiVals.plotFilter[vVal] : _gui.unique()[vVal];
             }
             if (hVal) { // if col facet specified
-                facetCol = facetVals['col-facet'].label
-                colDat = _unique[facetCol];
+                colDat = hVal in guiVals.plotFilter ? guiVals.plotFilter[hVal] : _gui.unique()[hVal];
             }
-            colWrap = (facetVals.colWrap) ? facetVals.colWrap.value : false;
+            colWrap = (facetVals.colWrap) ? convertToNumber(facetVals.colWrap) : false;
 
-            numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
-            numCols = (colWrap) ? colWrap : colDat.length;
+            _numRows = (colWrap) ? Math.ceil(colDat.length / colWrap) : rowDat.length;
+            _numCols = (colWrap) ? colWrap : colDat.length;
         }
 
-
         // calculate width/height of each facet 
-        var colWidth = jQuery('#guiPanel').width() / numCols;
-        var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / aspectRatio;
+        var colWidth = calcColWidth();
+        var rowHeight = typeof minRowHeight === 'number' ? minRowHeight : colWidth / _aspectRatio;
 
         // generate DOM elements
         var facetCount = 0;
-        for (var i = 0; i < numRows; i++) {
+        var plotCount = 1;
+        for (var i = 0; i < _numRows; i++) {
 
-            var row = plotDom.append('div')
-                .attr('class', 'facetRow')
-                .attr('id', 'row_' + i);
+            if (d3.select('#row_'+i).empty()) { // dont generate row if it already exists
+                var row = plotDom.append('div')
+                    .attr('class', 'facetRow')
+                    .attr('id', 'row_' + i);
 
-            for (var j = 0; j < numCols; j++) {
-                row.append('div')
-                    .attr('class', facetCount%2==0 ? 'facet fill' : 'facet')
-                    .attr('id','facet_'+facetCount)
-                    .style({height: rowHeight + 'px', width: colWidth + 'px'})
-                    .append('svg');
-                facetCount++;
+                if (d3.select('#facet_'+facetCount).empty()) {
+                    for (var j = 0; j < _numCols; j++) {
+                        row.append('div')
+                            .attr('class', 'facet ' + (facetCount%2==0 ? 'fill' : ''))
+                            .attr('id','facet_'+facetCount)
+                            .style({height: rowHeight + 'px', width: colWidth + 'px'})
+                            .append('svg')
+                        facetCount++;
+
+                        plotCount += 1;
+                    }
+                }
             }
 
             // this will prevent the final row from filling with facets
-            if (colWrap && i == (numRows - 2) ) numCols = (colDat.length % colWrap) ? colDat.length % colWrap : colWrap; 
+            if (colWrap && i == (_numRows - 2) ) _numCols = (colDat.length % colWrap) ? colDat.length % colWrap : colWrap; 
 
         }
 
@@ -391,10 +516,10 @@ var meowcow = (function() {
         // first group by row, then by column
         // into form {row_groups: {col_groups: {dat} } }
         // if row & col combination of data is missing, undefined will be the val
-        if (facetRow && facetCol) {
+        if (vVal && hVal) {
             var nested = d3.nest()
-                .key(function(d) { return d[facetRow] })
-                .key(function(d) { return d[facetCol] })
+                .key(function(d) { return d[vVal] })
+                .key(function(d) { return d[hVal] })
                 .map(dat);
 
             // set undefined for missing data
@@ -405,13 +530,13 @@ var meowcow = (function() {
                 }
             }
 
-        } else if (facetRow || facetCol) {
+        } else if (vVal || hVal) {
             var tmp = d3.nest()
-                .key(function(d) { return (facetRow) ? d[facetRow] : d[facetCol] })
+                .key(function(d) { return (vVal) ? d[vVal] : d[hVal] })
                 .map(dat);
 
             var nested = {};
-            if (facetRow) { // if grouping in rows
+            if (vVal) { // if grouping in rows
                 for (var i = 0; i < rowDat.length; i++) {
                     var rowGroup = rowDat[i];
                     var groupDat = tmp[rowGroup];
@@ -443,6 +568,27 @@ var meowcow = (function() {
 
     }
 
+
+    /**
+     * Used to check whether a particular option set
+     * in config.js is valid for the given plot. If
+     * not, an error message is displayed.
+     *
+     * @param {} 
+     * @param {str} option - option name
+     * @param {str} chartType - chart type being checked for option 
+     *
+     * @return - false if option is not valid
+     */
+    function checkIfIsOption(func, option, chartType) {
+
+        if (typeof func !== "function") {
+            displayWarning("The chart option <code>" + option + "</code> does not exist for the chart " + chartType + "; please change it in your config.", _warningsID, true);
+            return false;
+        }
+        return true;
+    }
+
     //============================================================
     // Expose
     //------------------------------------------------------------
@@ -470,8 +616,8 @@ function displayWarning(message, selector=false, error=false) {
 
     // generate wrapper if it doesn't exist
     if (!selector) {
-        d3.select("body").append("div").attr("id","warning")
-        selector = "#warning";
+        d3.select("body").append("div").attr("id",_warningsID)
+        selector = "#" + _warningsID;
     }
 
 
@@ -484,5 +630,27 @@ function displayWarning(message, selector=false, error=false) {
     tmp += message;
     tmp += '</div>';
     d3.select('#'+selector).html(tmp);
+}
+
+
+/**
+* Convert string to either an int, float
+* or leave as string
+*
+* @param {string} str - input string to convert
+*
+* @return - either a float, int or string
+*/
+
+function convertToNumber(str) {
+
+    if (str != null) {
+        var convert = str * 1;
+
+        return (isNaN(convert)) ? str : convert;
+    } else {
+        return str;
+    }
+
 }
 

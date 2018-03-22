@@ -1,10 +1,13 @@
+mark {
+    color: #a58d2d;
+}
+
 #gui {
     margin-top:10px;
 }
 
 .facet {
     float: left;
-    
 }
 
 .facet.fill {
@@ -53,16 +56,20 @@ g.nv-distroplot {
     stroke-width: 1.5;
 }
 
-circle.nv-distroplot-observation {
+.nv-distroplot-observation circle {
     opacity: 0.7;
     stroke-width: 1;
 }
 
-circle.nv-distroplot-outlier {
+.nv-distroplot-outlier circle {
     fill-opacity: 1;
     opacity: 0.9;
     stroke: #5C5C5C !important;
     fill: #5C5C5C !important;
+}
+
+button.pull-right {
+    margin-left: 10px;
 }
 
 line.hover {
@@ -74,10 +81,28 @@ circle.hover {
     opacity: 1;
 }
 
+/*
 .nv-x .nv-axis g text.nv-axislabel {
     font-size: 2vmin;
 }
 .nv-y .nv-axis g text.nv-axislabel {
     font-size: 2hmin;
 }
+*/
 
+.cell-hover rect {
+    stroke-width: 3;
+    fill-opacity: 0.2;
+}
+
+.cell-hover text {
+    fill: #000 !important;
+}
+
+.no-hover {
+    fill-opacity: 0.2;
+}
+
+.gridLines {
+    stroke: rgb(155,155,155);
+}
